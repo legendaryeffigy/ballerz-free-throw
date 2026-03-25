@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ballerz Free Throw</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: white;
+    }
+
+    .header {
+      padding: 20px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      background: linear-gradient(90deg, #ff6b35, #f7c59f);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .wallet-section {
+      margin: 10px 0;
+    }
+
+    .wallet-btn {
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      border: none;
+      padding: 12px 24px;
+      border-radius: 25px;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .wallet-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .wallet-info {
+      font-size: 0.9rem;
+      color: #a0a0a0;
+      margin-top: 8px;
+    }
+
+    .game-container {
+      position: relative;
+      width: 400px;
+      height: 500px;
+      max-width: 95vw;
+    }
+
+    #gameCanvas {
+      background: linear-gradient(180deg, #2d132c 0%, #801336 50%, #c72c41 100%);
+      border-radius: 15px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .shoot-btn {
+      background: linear-gradient(90deg, #ff6b35, #ff8c42);
+      border: none;
+      padding: 15px 50px;
+      border-radius: 30px;
+      color: white;
+      font-size: 1.3rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    .shoot-btn:hover {
+      transform: scale(1.05);
+    }
+
+    .shoot-btn:active {
+      transform: scale(0.95);
+    }
+
+    .shoot-btn:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+
+    .stats {
+      display: flex;
+      gap: 30px;
+      font-size: 1.2rem;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #ff6b35;
+    }
+
+    .instructions {
+      margin-top: 15px;
+      color: #a0a0a0;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🏀 Ballerz Free Throw</h1>
+    <div class="wallet-section">
+      <button class="wallet-btn" id="walletBtn">Connect Flow Wallet</button>
+      <div class="wallet-info" id="walletInfo">Play as guest or connect to use your Baller</div>
+    </div>
+  </div>
+
+  <div class="game-container">
+    <canvas id="gameCanvas" width="400" height="500"></canvas>
+  </div>
+
+  <div class="controls">
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-value" id="score">0</div>
+        <div>Score</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="streak">0</div>
+        <div>Streak</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="best">0</div>
+        <div>Best</div>
+      </div>
+    </div>
+    <button class="shoot-btn" id="shootBtn">SHOOT</button>
+    <div class="instructions" id="instructions">Tap SHOOT to set power, then tap again to set aim</div>
+  </div>
+
+  <!-- FCL for Flow wallet connection -->
+  <script src="[cdn.jsdelivr.net](https://cdn.jsdelivr.net/npm/@onflow/fcl@1.9.0/dist/fcl.min.js)"></script>
+
+  <script>
+    // ==================== FLOW WALLET CONFIG ====================
+    fcl.config({
+      "app.detail.title": "Ballerz Free Throw",
+      "app.detail.icon": "[placekitten.com](https://placekitten.com/200/200)",
+      "accessNode.api": "[rest-mainnet.onflow.org](https://rest-mainnet.onflow.org)",
+      "discovery.wallet": "[fcl-discovery.onflow.org](https://fcl-discovery.onflow.org/authn)"
+    });
+
+    // ==================== GAME STATE ====================
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const shootBtn = document.getElementById('shootBtn');
+    const walletBtn = document.getElementById('walletBtn');
+    const walletInfo = document.getElementById('walletInfo');
+    const instructionsEl = document.getElementById('instructions');
+
+    let gameState = {
+      phase: 'power', // 'power', 'aim', 'shooting', 'result'
+      power: 0,
+      powerDirection: 1,
+      aim: 0,
+      aimDirection: 1,
+      ball: null,
+      score: 0,
+      streak: 0,
+      best: 0,
+      playerImage: null,
+      walletAddress: null,
+      ballerNFT: null
+    };
+
+    // ==================== COURT DIMENSIONS ====================
+    const court = {
+      hoopX: 200,
+      hoopY: 100,
+      hoopWidth: 60,
+      rimRadius: 30,
+      backboardHeight: 80,
+      playerX: 200,
+      playerY: 420
+    };
+
+    // ==================== WALLET FUNCTIONS ====================
+    async function connectWallet() {
+      try {
+        await fcl.authenticate();
+        const user = await fcl.currentUser.snapshot();
+        
+        if (user.loggedIn) {
+          gameState.walletAddress = user.addr;
+          walletBtn.textContent = `${user.addr.slice(0, 6)}...${user.addr.slice(-4)}`;
+          walletInfo.textContent = 'Connected! Checking for Ballerz...';
+          
+          await fetchBallerNFT(user.addr);
+        }
+      } catch (error) {
+        console.error('Wallet connection failed:', error);
+        walletInfo.textContent = 'Connection failed. Playing as guest.';
+      }
+    }
+
+    async function fetchBallerNFT(address) {
+      // Ballerz collection on Flow
+      // In production, you'd query the actual Ballerz contract
+      // For now, we'll simulate finding a Baller
+      try {
+        // This is a simplified check - real implementation would use FCL scripts
+        // to query the Ballerz.Collection from the user's account
+        
+        walletInfo.textContent = 'Baller loaded! 🏀';
+        gameState.ballerNFT = {
+          id: '1234',
+          name: 'Baller #1234'
+        };
+        
+        // In production, load actual NFT image:
+        // gameState.playerImage = await loadImage(nftMetadata.image);
+        
+      } catch (error) {
+        console.log('No Ballerz found, using guest mode');
+        walletInfo.textContent = 'No Ballerz found. Playing as guest.';
+      }
+    }
+
+    walletBtn.addEventListener('click', connectWallet);
+
+    // ==================== DRAWING FUNCTIONS ====================
+    function drawCourt() {
+      // Court floor
+      ctx.fillStyle = '#c72c41';
+      ctx.fillRect(0, 350, 400, 150);
+      
+      // Court lines
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(200, 500, 120, Math.PI, 0);
+      ctx.stroke();
+      
+      // Three point line
+      ctx.beginPath();
+      ctx.arc(200, 500, 180, Math.PI * 1.15, Math.PI * 1.85);
+      ctx.stroke();
+    }
+
+    function drawBackboard() {
+      // Backboard
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.fillRect(court.hoopX - 50, court.hoopY - 60, 100, 70);
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(court.hoopX - 50, court.hoopY - 60, 100, 70);
+      
+      // Backboard square
+      ctx.strokeStyle = '#ff6b35';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(court.hoopX - 22, court.hoopY - 35, 44, 35);
+    }
+
+    function drawRim() {
+      // Rim
+      ctx.strokeStyle = '#ff6b35';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(court.hoopX - court.rimRadius, court.hoopY);
+      ctx.lineTo(court.hoopX + court.rimRadius, court.hoopY);
+      ctx.stroke();
+      
+      // Rim depth (3D effect)
+      ctx.strokeStyle = '#cc5522';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(court.hoopX, court.hoopY + 5, court.rimRadius, 8, 0, 0, Math.PI);
+      ctx.stroke();
+      
+      // Net
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 8; i++) {
+        const x = court.hoopX - court.rimRadius + (i * court.rimRadius * 2 / 7);
+        ctx.beginPath();
+        ctx.moveTo(x, court.hoopY + 5);
+        ctx.quadraticCurveTo(x + (i % 2 ? 5 : -5), court.hoopY + 35, x, court.hoopY + 50);
+        ctx.stroke();
+      }
+    }
+
+    function drawPlayer() {
+      const x = court.playerX;
+      const y = court.playerY;
+      
+      // Player body (silhouette style)
+      ctx.fillStyle = gameState.ballerNFT ? '#667eea' : '#444';
+      
+      // Head
+      ctx.beginPath();
+      ctx.arc(x, y - 50, 20, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Body
+      ctx.fillRect(x - 15, y - 30, 30, 40);
+      
+      // Arms (shooting pose)
+      ctx.fillRect(x + 10, y - 35, 25, 10);
+      
+      // Legs
+      ctx.fillRect(x - 12, y + 10, 10, 25);
+      ctx.fillRect(x + 2, y + 10, 10, 25);
+      
+      // Jersey number
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 16px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(gameState.ballerNFT ? '⭐' : '?', x, y - 5);
+    }
+
+    function drawBall(x, y, radius = 15) {
+      // Ball
+      ctx.fillStyle = '#ff6b35';
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Ball lines
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      // Curved lines on ball
+      ctx.beginPath();
+      ctx.arc(x, y, radius * 0.7, -0.5, 0.5);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x, y - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.stroke();
+    }
+
+    function drawPowerMeter() {
+      const meterX = 30;
+      const meterY = 150;
+      const meterHeight = 200;
+      const meterWidth = 20;
+      
+      // Background
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(meterX, meterY, meterWidth, meterHeight);
+      
+      // Power level
+      const gradient = ctx.createLinearGradient(meterX, meterY + meterHeight, meterX, meterY);
+      gradient.addColorStop(0, '#00ff00');
+      gradient.addColorStop(0.5, '#ffff00');
+      gradient.addColorStop(1, '#ff0000');
+      
+      ctx.fillStyle = gradient;
+      const powerHeight = (gameState.power / 100) * meterHeight;
+      ctx.fillRect(meterX, meterY + meterHeight - powerHeight, meterWidth, powerHeight);
+      
+      // Border
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(meterX, meterY, meterWidth, meterHeight);
+      
+      // Sweet spot indicator
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      const sweetSpotY = meterY + meterHeight - (75 / 100) * meterHeight;
+      ctx.fillRect(meterX - 5, sweetSpotY - 2, meterWidth + 10, 4);
+      
+      // Label
+      ctx.fillStyle = 'white';
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('POWER', meterX + meterWidth / 2, meterY + meterHeight + 20);
+    }
+
+    function drawAimMeter() {
+      const meterX = 100;
+      const meterY = 380;
+      const meterWidth = 200;
+      const meterHeight = 15;
+      
+      // Background
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(meterX, meterY, meterWidth, meterHeight);
+      
+      // Center target zone
+      ctx.fillStyle = 'rgba(0,255,0,0.3)';
+      ctx.fillRect(meterX + meterWidth / 2 - 20, meterY, 40, meterHeight);
+      
+      // Aim indicator
+      ctx.fillStyle = '#ff6b35';
+      const aimX = meterX + ((gameState.aim + 100) / 200) * meterWidth;
+      ctx.beginPath();
+      ctx.moveTo(aimX, meterY - 5);
+      ctx.lineTo(aimX - 8, meterY - 15);
+      ctx.lineTo(aimX + 8, meterY - 15);
+      ctx.clos
