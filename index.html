@@ -48,7 +48,7 @@
       letter-spacing: 2px;
     }
 
-    .wallet-container {
+    .top-bar {
       display: flex;
       align-items: center;
       justify-content: center;
@@ -57,7 +57,7 @@
       flex-wrap: wrap;
     }
 
-    .wallet-btn {
+    .wallet-btn, .sound-btn {
       background: #7c3aed;
       border: 2px solid #a855f7;
       padding: 6px 12px;
@@ -68,12 +68,23 @@
       transition: all 0.2s;
     }
 
-    .wallet-btn:hover { background: #6d28d9; }
+    .wallet-btn:hover, .sound-btn:hover { background: #6d28d9; }
     .wallet-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .wallet-btn.connected {
       background: #059669;
       border-color: #34d399;
+    }
+
+    .sound-btn { 
+      padding: 6px 10px;
+      font-size: 0.6rem;
+      min-width: 40px;
+    }
+
+    .sound-btn.muted {
+      background: #991b1b;
+      border-color: #f87171;
     }
 
     .wallet-info {
@@ -204,8 +215,9 @@
     <div class="header">
       <div class="logo">BALLERZ</div>
       <div class="subtitle">FREE THROW ARCADE</div>
-      <div class="wallet-container">
+      <div class="top-bar">
         <button class="wallet-btn" id="walletBtn">CONNECT WALLET</button>
+        <button class="sound-btn" id="soundBtn">🔊</button>
         <span class="wallet-info" id="walletInfo">Guest Mode</span>
       </div>
       <div class="nft-selector" id="nftSelector"></div>
@@ -240,9 +252,223 @@
   <script src="[cdn.jsdelivr.net](https://cdn.jsdelivr.net/npm/@onflow/types@1.0.0/dist/types.min.js)"></script>
 
   <script>
+    // ============ BACKGROUND MUSIC ============
+    
+    var bgmTracks = ['bgm1.mp3', 'bgm2.mp3', 'bgm3.mp3'];
+    var currentBgm = null;
+    var bgmIndex = Math.floor(Math.random() * bgmTracks.length);
+    var musicStarted = false;
+    var musicEnabled = true;
+
+    function startMusic() {
+      if (musicStarted) return;
+      musicStarted = true;
+      playNextTrack();
+    }
+
+    function playNextTrack() {
+      if (!musicEnabled) return;
+      
+      // Pick a different track than the current one
+      var newIndex;
+      do {
+        newIndex = Math.floor(Math.random() * bgmTracks.length);
+      } while (newIndex === bgmIndex && bgmTracks.length > 1);
+      bgmIndex = newIndex;
+      
+      if (currentBgm) {
+        currentBgm.pause();
+        currentBgm = null;
+      }
+      
+      currentBgm = new Audio(bgmTracks[bgmIndex]);
+      currentBgm.volume = 0.4;
+      currentBgm.addEventListener('ended', playNextTrack);
+      currentBgm.play().catch(function(e) {
+        console.log('Music autoplay blocked:', e);
+      });
+      
+      console.log('Now playing:', bgmTracks[bgmIndex]);
+    }
+
+    function toggleMusic() {
+      musicEnabled = !musicEnabled;
+      
+      if (musicEnabled) {
+        if (musicStarted) {
+          playNextTrack();
+        }
+      } else {
+        if (currentBgm) {
+          currentBgm.pause();
+        }
+      }
+    }
+
+    // ============ AUDIO ENGINE (SFX) ============
+    
+    var audioCtx = null;
+    var sfxEnabled = true;
+    var audioInitialized = false;
+
+    function initAudio() {
+      if (audioInitialized) return;
+      try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        audioInitialized = true;
+        startMusic();
+      } catch(e) {
+        console.log('Web Audio not supported');
+      }
+    }
+
+    // Sound toggle - now controls both music and SFX
+    document.getElementById('soundBtn').addEventListener('click', function() {
+      sfxEnabled = !sfxEnabled;
+      toggleMusic();
+      this.textContent = sfxEnabled ? '🔊' : '🔇';
+      this.classList.toggle('muted', !sfxEnabled);
+    });
+
+    function playTone(freq, duration, type, volume, delay) {
+      if (!sfxEnabled || !audioCtx) return;
+      delay = delay || 0;
+      
+      setTimeout(function() {
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        
+        osc.type = type || 'square';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        
+        gain.gain.setValueAtTime(volume || 0.1, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + duration);
+      }, delay);
+    }
+
+    function playNoise(duration, volume, filterFreq) {
+      if (!sfxEnabled || !audioCtx) return;
+      
+      var bufferSize = audioCtx.sampleRate * duration;
+      var buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      var data = buffer.getChannelData(0);
+      
+      for (var i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+      
+      var noise = audioCtx.createBufferSource();
+      noise.buffer = buffer;
+      
+      var filter = audioCtx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = filterFreq || 1000;
+      filter.Q.value = 0.5;
+      
+      var gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(volume || 0.1, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      noise.start();
+    }
+
+    // ============ SOUND EFFECTS ============
+
+    function playShootSound() {
+      initAudio();
+      playTone(400, 0.1, 'sine', 0.15);
+      playTone(600, 0.1, 'sine', 0.1, 30);
+    }
+
+    function playSwishSound() {
+      initAudio();
+      playNoise(0.3, 0.15, 2000);
+      playTone(523, 0.15, 'square', 0.12, 50);
+      playTone(659, 0.15, 'square', 0.12, 120);
+      playTone(784, 0.15, 'square', 0.12, 190);
+      playTone(1047, 0.25, 'square', 0.15, 260);
+    }
+
+    function playPerfectSound() {
+      initAudio();
+      playNoise(0.2, 0.1, 3000);
+      playTone(784, 0.1, 'sine', 0.15, 0);
+      playTone(988, 0.1, 'sine', 0.15, 80);
+      playTone(1175, 0.1, 'sine', 0.15, 160);
+      playTone(1568, 0.3, 'sine', 0.2, 240);
+      // Extra sparkle
+      playTone(2093, 0.2, 'sine', 0.1, 400);
+      playTone(2637, 0.3, 'sine', 0.08, 500);
+    }
+
+    function playStreakSound(streakNum) {
+      initAudio();
+      playNoise(0.2, 0.12, 2500);
+      
+      var baseNote = 523;
+      playTone(baseNote, 0.1, 'square', 0.12, 0);
+      playTone(baseNote * 1.25, 0.1, 'square', 0.12, 60);
+      playTone(baseNote * 1.5, 0.1, 'square', 0.12, 120);
+      playTone(baseNote * 2, 0.3, 'sawtooth', 0.15, 180);
+      
+      if (streakNum >= 3) {
+        playTone(baseNote * 2.5, 0.2, 'square', 0.1, 350);
+        playTone(baseNote * 3, 0.3, 'sawtooth', 0.12, 450);
+      }
+      if (streakNum >= 5) {
+        playNoise(0.8, 0.2, 800);
+      }
+    }
+
+    function playMissSound() {
+      initAudio();
+      playTone(300, 0.2, 'square', 0.12);
+      playTone(200, 0.3, 'square', 0.1, 150);
+      playTone(150, 0.4, 'sawtooth', 0.08, 350);
+    }
+
+    function playRimSound() {
+      initAudio();
+      playTone(180, 0.15, 'triangle', 0.2);
+      playTone(120, 0.1, 'sine', 0.15, 50);
+      playNoise(0.05, 0.1, 3000);
+    }
+
+    function playBounceSound() {
+      initAudio();
+      playTone(100, 0.1, 'sine', 0.2);
+      playTone(80, 0.15, 'triangle', 0.1, 30);
+    }
+
+    function playClickSound() {
+      initAudio();
+      playTone(800, 0.05, 'square', 0.08);
+    }
+
+    function playMeterLockSound() {
+      initAudio();
+      playTone(600, 0.08, 'square', 0.1);
+      playTone(900, 0.1, 'square', 0.12, 50);
+    }
+
+    function playPerfectLockSound() {
+      initAudio();
+      playTone(800, 0.08, 'sine', 0.12);
+      playTone(1200, 0.12, 'sine', 0.15, 50);
+    }
+
     // ============ FLOW WALLET INTEGRATION ============
     
-    // Configure FCL for Flow Mainnet
     fcl.config({
       "app.detail.title": "Ballerz Free Throw",
       "app.detail.icon": "[ballerz.world](https://ballerz.world/logo.png)",
@@ -256,13 +482,14 @@
     var selectedNFT = null;
     var nftImage = null;
 
-    // Wallet button handler
     document.getElementById('walletBtn').addEventListener('click', async function() {
+      initAudio();
+      playClickSound();
+      
       var btn = this;
       var info = document.getElementById('walletInfo');
       
       if (userWallet) {
-        // Disconnect
         await fcl.unauthenticate();
         userWallet = null;
         userBallerz = [];
@@ -291,7 +518,6 @@
           btn.classList.add('connected');
           info.innerHTML = 'Loading Ballerz<span class="loading-spinner"></span>';
           
-          // Fetch Ballerz NFTs
           await fetchBallerz(userWallet);
           
           if (userBallerz.length > 0) {
@@ -299,6 +525,7 @@
             info.classList.add('has-ballerz');
             showNFTSelector();
             selectNFT(0);
+            playSwishSound();
           } else {
             info.textContent = 'No Ballerz found - Guest Mode';
             useGuestBaller();
@@ -309,17 +536,16 @@
         info.textContent = 'Connection failed';
         btn.textContent = 'CONNECT WALLET';
         useGuestBaller();
+        playMissSound();
       }
       
       btn.disabled = false;
     });
 
-    // Fetch Ballerz from wallet using Gaia contract
     async function fetchBallerz(address) {
       userBallerz = [];
       
       try {
-        // Query Gaia NFTs and filter for Ballerz
         var result = await fcl.query({
           cadence: `
             import Gaia from 0x8b148183c28ff88f
@@ -339,7 +565,6 @@
                 let nft = collection!.borrowGaiaNFT(id: id)!
                 let metadata = nft.metadata
                 
-                // Check if this is a Ballerz NFT
                 let setName = metadata.setName()
                 if setName == "Ballerz" {
                   nfts.append({
@@ -358,12 +583,10 @@
         });
         
         userBallerz = result || [];
-        console.log('Found Ballerz:', userBallerz);
         
       } catch (err) {
         console.error('Error fetching Ballerz:', err);
         
-        // Fallback: Try alternate query method
         try {
           var fallbackResult = await fcl.query({
             cadence: `
@@ -374,7 +597,6 @@
                 let account = getAccount(address)
                 let nfts: [{String: AnyStruct}] = []
                 
-                // Try to iterate known collection paths
                 let collectionPaths = [
                   /public/GaiaCollection,
                   /public/BallerCollection
@@ -409,7 +631,6 @@
       }
     }
 
-    // Show NFT selector thumbnails
     function showNFTSelector() {
       var selector = document.getElementById('nftSelector');
       selector.innerHTML = '';
@@ -421,7 +642,10 @@
         thumb.src = nft.image || 'data:image/svg+xml,<svg xmlns="[w3.org](http://www.w3.org/2000/svg)" width="40" height="40"><rect fill="%237c3aed" width="40" height="40"/><text x="20" y="25" text-anchor="middle" fill="white" font-size="10">' + (index + 1) + '</text></svg>';
         thumb.alt = nft.name || 'Baller #' + nft.id;
         thumb.title = nft.name || 'Baller #' + nft.id;
-        thumb.onclick = function() { selectNFT(index); };
+        thumb.onclick = function() { 
+          playClickSound();
+          selectNFT(index); 
+        };
         thumb.onerror = function() {
           this.src = 'data:image/svg+xml,<svg xmlns="[w3.org](http://www.w3.org/2000/svg)" width="40" height="40"><rect fill="%237c3aed" width="40" height="40"/><text x="20" y="25" text-anchor="middle" fill="white" font-size="10">' + (index + 1) + '</text></svg>';
         };
@@ -429,29 +653,19 @@
       });
     }
 
-    // Select an NFT to use
     function selectNFT(index) {
       selectedNFT = userBallerz[index];
       useNFTAsBaller = true;
       
-      // Update thumbnail selection UI
       var thumbs = document.querySelectorAll('.nft-thumb');
       thumbs.forEach(function(t, i) {
         t.classList.toggle('selected', i === index);
       });
       
-      // Load NFT image
       if (selectedNFT && selectedNFT.image) {
         nftImage = new Image();
         nftImage.crossOrigin = 'anonymous';
         nftImage.src = selectedNFT.image;
-        nftImage.onload = function() {
-          console.log('NFT image loaded:', selectedNFT.name);
-        };
-        nftImage.onerror = function() {
-          console.log('Could not load NFT image, using sprite');
-          nftImage = null;
-        };
       }
     }
 
@@ -475,8 +689,13 @@
     var bestEl = document.getElementById('best');
 
     var phase = 'ready';
+    // Power: 0-100, sweet spot is 40-60 (center 20%)
     var power = 0, powerDir = 1;
+    // Aim: 0-100, sweet spot is 40-60 (center 20%)
     var aim = 0, aimDir = 1;
+    var lockedPower = 50;
+    var lockedAim = 50;
+    
     var score = 0, streak = 0, best = 0;
     var ball = null;
     var ballTrail = [];
@@ -486,6 +705,8 @@
     var netSway = 0;
     var frameCount = 0;
     var useNFTAsBaller = false;
+    var rimHitPlayed = false;
+    var perfectShot = false;
 
     // Crowd
     var crowd = [];
@@ -538,26 +759,74 @@
 
     var currentBaller = ballerTypes[Math.floor(Math.random() * ballerTypes.length)];
 
+    // Check if value is in the sweet spot (40-60, center 20%)
+    function isInSweetSpot(value) {
+      return value >= 40 && value <= 60;
+    }
+
     function handleShoot() {
+      initAudio();
+      
       if (phase === 'ready') {
         phase = 'power';
         instructions.textContent = 'SET POWER!';
         instructions.className = 'instructions';
+        playClickSound();
       } else if (phase === 'power') {
+        lockedPower = power;
         phase = 'aim';
         instructions.textContent = 'SET AIM!';
+        if (isInSweetSpot(power)) {
+          playPerfectLockSound();
+        } else {
+          playMeterLockSound();
+        }
       } else if (phase === 'aim') {
+        lockedAim = aim;
         phase = 'shooting';
-        instructions.textContent = '';
         madeShot = false;
+        rimHitPlayed = false;
         
-        var powerFactor = power / 100;
-        var aimFactor = aim / 100;
-        var targetVY = -14 - (powerFactor * 3.5);
-        var targetVX = aimFactor * 3;
-        var aimAssist = 0.2;
-        var hoopDir = (hoop.x - player.x) * 0.006;
-        targetVX = targetVX * (1 - aimAssist) + hoopDir * aimAssist;
+        // Check for perfect shot (both meters in sweet spot)
+        perfectShot = isInSweetSpot(lockedPower) && isInSweetSpot(lockedAim);
+        
+        if (isInSweetSpot(aim)) {
+          playPerfectLockSound();
+        } else {
+          playMeterLockSound();
+        }
+        
+        if (perfectShot) {
+          instructions.textContent = '✨ PERFECT! ✨';
+          instructions.className = 'instructions success';
+        } else {
+          instructions.textContent = '';
+        }
+        
+        setTimeout(function() { playShootSound(); }, 50);
+        
+        // Calculate shot trajectory based on meter positions
+        // Power: 40-60 is perfect (gives ideal arc)
+        // Aim: 40-60 is perfect (goes straight to hoop)
+        
+        var powerOffset = (lockedPower - 50) / 50; // -1 to 1, 0 is perfect
+        var aimOffset = (lockedAim - 50) / 50; // -1 to 1, 0 is perfect
+        
+        // Base trajectory for perfect shot
+        var baseVY = -14.5;
+        var baseVX = 0;
+        
+        // Adjust based on power (affects arc height)
+        var targetVY = baseVY - (powerOffset * 3); // Too low = short, too high = long
+        
+        // Adjust based on aim (affects left/right)
+        var targetVX = aimOffset * 4; // Negative = left, positive = right
+        
+        // Perfect shot gets slight aim assist
+        if (perfectShot) {
+          targetVX *= 0.3;
+          targetVY = baseVY;
+        }
         
         ball = {
           x: player.x,
@@ -577,14 +846,18 @@
     function update() {
       frameCount++;
       
+      // Power meter oscillates 0-100
       if (phase === 'power') {
-        power += powerDir * 1.3;
+        power += powerDir * 1.8;
         if (power >= 100) { power = 100; powerDir = -1; }
         if (power <= 0) { power = 0; powerDir = 1; }
-      } else if (phase === 'aim') {
-        aim += aimDir * 1.5;
+      }
+      
+      // Aim meter oscillates 0-100 (left to right)
+      if (phase === 'aim') {
+        aim += aimDir * 2.0;
         if (aim >= 100) { aim = 100; aimDir = -1; }
-        if (aim <= -100) { aim = -100; aimDir = 1; }
+        if (aim <= 0) { aim = 0; aimDir = 1; }
       }
 
       if (netSway > 0.01) netSway *= 0.93;
@@ -611,13 +884,29 @@
             if (streak > best) best = streak;
             updateStats();
             crowd.forEach(function(c) { c.speed = 0.15; });
+            
+            if (perfectShot) {
+              playPerfectSound();
+            } else if (streak >= 2) {
+              playStreakSound(streak);
+            } else {
+              playSwishSound();
+            }
+            
             endShot(true);
             return;
           }
           
+          // Rim collision
           if ((ball.x > hoopLeft - 4 && ball.x < hoopLeft + 8) || 
               (ball.x > hoopRight - 8 && ball.x < hoopRight + 4)) {
-            if (Math.random() < 0.4) {
+            
+            if (!rimHitPlayed) {
+              playRimSound();
+              rimHitPlayed = true;
+            }
+            
+            if (Math.random() < 0.3) {
               ball.vx = (hoop.x - ball.x) * 0.1;
               ball.vy = -2;
             } else {
@@ -627,9 +916,14 @@
           }
         }
 
+        if (ball.y > H - 30 && ball.vy > 0) {
+          playBounceSound();
+        }
+
         if (ball.y > H + 50 || ball.x < -50 || ball.x > W + 50) {
           streak = 0;
           updateStats();
+          playMissSound();
           endShot(false);
         }
       }
@@ -641,7 +935,11 @@
 
     function endShot(made) {
       if (made) {
-        instructions.textContent = 'SWISH! +' + streak + ' 🔥';
+        if (perfectShot) {
+          instructions.textContent = '✨ PERFECT! +' + streak + ' ✨';
+        } else {
+          instructions.textContent = 'SWISH! +' + streak + ' 🔥';
+        }
         instructions.className = 'instructions success';
       } else {
         instructions.textContent = 'MISS!';
@@ -654,6 +952,7 @@
         phase = 'ready';
         power = 0;
         aim = 0;
+        perfectShot = false;
         if (!useNFTAsBaller) {
           currentBaller = ballerTypes[Math.floor(Math.random() * ballerTypes.length)];
         }
@@ -821,7 +1120,7 @@
         ctx.fill();
       });
 
-      // Draw player - NFT image or sprite
+      // Draw player
       if (useNFTAsBaller && nftImage && nftImage.complete) {
         drawNFTPlayer(player.x, player.y);
       } else {
@@ -835,15 +1134,123 @@
         drawBall(player.x + 24, player.y - 42, 11, 0);
       }
 
-      // Power meter
+      // Power meter (vertical, left side)
       if (phase === 'power' || phase === 'aim' || phase === 'shooting') {
-        drawMeter(20, 200, 18, 130, power, 'PWR', true);
+        drawPowerMeter();
       }
 
-      // Aim meter
+      // Aim meter (horizontal, bottom)
       if (phase === 'aim' || phase === 'shooting') {
-        drawMeter(W - 38, 200, 18, 130, (aim + 100) / 2, 'AIM', false);
+        drawAimMeter();
       }
+    }
+
+    function drawPowerMeter() {
+      var x = 25, y = 150, w = 24, h = 180;
+      
+      // Background
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(x, y, w, h);
+
+      // Zones - red on edges, green in center
+      var zoneHeight = h / 5; // 20% each zone
+      
+      // Bottom red zone (0-40%)
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.4)';
+      ctx.fillRect(x, y + h - zoneHeight * 2, w, zoneHeight * 2);
+      
+      // Center green zone (40-60%)
+      ctx.fillStyle = 'rgba(34, 197, 94, 0.5)';
+      ctx.fillRect(x, y + zoneHeight * 2, w, zoneHeight);
+      
+      // Top red zone (60-100%)
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.4)';
+      ctx.fillRect(x, y, w, zoneHeight * 2);
+
+      // Current value indicator
+      var currentPower = phase === 'power' ? power : lockedPower;
+      var indicatorY = y + h - (currentPower / 100) * h;
+      
+      // Indicator bar
+      ctx.fillStyle = phase === 'power' ? '#ffffff' : (isInSweetSpot(lockedPower) ? '#4ade80' : '#f87171');
+      ctx.fillRect(x - 5, indicatorY - 3, w + 10, 6);
+      
+      // Glow effect when in sweet spot
+      if (phase === 'power' && isInSweetSpot(power)) {
+        ctx.fillStyle = 'rgba(34, 197, 94, 0.3)';
+        ctx.fillRect(x - 8, indicatorY - 6, w + 16, 12);
+      }
+
+      // Border
+      ctx.strokeStyle = '#f97316';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(x - 3, y - 3, w + 6, h + 6);
+
+      // Label
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = '8px "Press Start 2P"';
+      ctx.textAlign = 'center';
+      ctx.fillText('PWR', x + w/2, y + h + 18);
+    }
+
+    function drawAimMeter() {
+      var x = 90, y = 480, w = 300, h = 20;
+      
+      // Background
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(x, y, w, h);
+
+      // Zones - red on edges, green in center
+      var zoneWidth = w / 5; // 20% each zone
+      
+      // Left red zone (0-40%)
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.4)';
+      ctx.fillRect(x, y, zoneWidth * 2, h);
+      
+      // Center green zone (40-60%)
+      ctx.fillStyle = 'rgba(34, 197, 94, 0.5)';
+      ctx.fillRect(x + zoneWidth * 2, y, zoneWidth, h);
+      
+      // Right red zone (60-100%)
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.4)';
+      ctx.fillRect(x + zoneWidth * 3, y, zoneWidth * 2, h);
+
+      // Current value indicator
+      var currentAim = phase === 'aim' ? aim : lockedAim;
+      var indicatorX = x + (currentAim / 100) * w;
+      
+      // Indicator bar
+      ctx.fillStyle = phase === 'aim' ? '#ffffff' : (isInSweetSpot(lockedAim) ? '#4ade80' : '#f87171');
+      ctx.fillRect(indicatorX - 3, y - 5, 6, h + 10);
+      
+      // Glow effect when in sweet spot
+      if (phase === 'aim' && isInSweetSpot(aim)) {
+        ctx.fillStyle = 'rgba(34, 197, 94, 0.3)';
+        ctx.fillRect(indicatorX - 6, y - 8, 12, h + 16);
+      }
+
+      // Border
+      ctx.strokeStyle = '#f97316';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(x - 3, y - 3, w + 6, h + 6);
+
+      // Labels
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = '8px "Press Start 2P"';
+      ctx.textAlign = 'center';
+      ctx.fillText('AIM', x + w/2, y - 10);
+      
+      // Left/Right indicators
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '6px "Press Start 2P"';
+      ctx.textAlign = 'left';
+      ctx.fillText('L', x + 5, y + 14);
+      ctx.textAlign = 'right';
+      ctx.fillText('R', x + w - 5, y + 14);
     }
 
     function drawNet() {
@@ -870,19 +1277,16 @@
     }
 
     function drawNFTPlayer(x, y) {
-      // Shadow
       ctx.fillStyle = 'rgba(0,0,0,0.25)';
       ctx.beginPath();
       ctx.ellipse(x, y + 38, 22, 6, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Draw NFT image as player (cropped to show character)
       var imgSize = 70;
       ctx.save();
       ctx.drawImage(nftImage, x - imgSize/2, y - imgSize + 15, imgSize, imgSize);
       ctx.restore();
 
-      // Draw arm holding ball
       ctx.fillStyle = '#deb887';
       ctx.fillRect(x + 20, y - 35, 8, 6);
       ctx.fillRect(x + 25, y - 42, 8, 10);
@@ -891,13 +1295,11 @@
     function drawBallerSprite(x, y, b) {
       var p = 3;
       
-      // Shadow
       ctx.fillStyle = 'rgba(0,0,0,0.25)';
       ctx.beginPath();
       ctx.ellipse(x, y + 38, 18, 5, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Shoes
       ctx.fillStyle = b.shoes;
       ctx.fillRect(x - 12, y + 30, p * 3, p * 2);
       ctx.fillRect(x + 3, y + 30, p * 3, p * 2);
@@ -905,7 +1307,6 @@
       ctx.fillRect(x - 12, y + 30, p * 3, p);
       ctx.fillRect(x + 3, y + 30, p * 3, p);
 
-      // Legs
       ctx.fillStyle = b.skin;
       ctx.fillRect(x - 10, y + 10, p * 2, p * 7);
       ctx.fillRect(x + 4, y + 10, p * 2, p * 7);
@@ -913,13 +1314,11 @@
       ctx.fillRect(x - 10, y + 10, p, p * 7);
       ctx.fillRect(x + 4, y + 10, p, p * 7);
 
-      // Shorts
       ctx.fillStyle = b.shorts;
       ctx.fillRect(x - 12, y - 2, p * 8, p * 5);
       ctx.fillStyle = b.shortsStripe;
       ctx.fillRect(x - 12, y + 1, p * 8, p);
 
-      // Jersey
       ctx.fillStyle = b.jersey;
       ctx.fillRect(x - 13, y - 22, p * 9, p * 7);
       ctx.fillStyle = b.jerseyShade;
@@ -929,35 +1328,29 @@
       ctx.fillRect(x + 11, y - 22, p, p * 7);
       ctx.fillRect(x - 13, y - 22, p * 9, p);
 
-      // Number
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 10px "Press Start 2P"';
       ctx.textAlign = 'center';
       ctx.fillText(b.number, x, y - 8);
 
-      // Left arm
       ctx.fillStyle = b.skin;
       ctx.fillRect(x - 18, y - 18, p * 2, p * 5);
       ctx.fillStyle = b.skinShade;
       ctx.fillRect(x - 18, y - 18, p, p * 5);
 
-      // Right arm (shooting)
       ctx.fillStyle = b.skin;
       ctx.fillRect(x + 13, y - 25, p * 2, p * 3);
       ctx.fillRect(x + 16, y - 32, p * 2, p * 3);
       ctx.fillRect(x + 18, y - 38, p * 2, p * 2);
 
-      // Neck
       ctx.fillStyle = b.skin;
       ctx.fillRect(x - 3, y - 26, p * 2, p * 2);
 
-      // Head
       ctx.fillStyle = b.skin;
       ctx.fillRect(x - 10, y - 45, p * 7, p * 7);
       ctx.fillStyle = b.skinShade;
       ctx.fillRect(x - 10, y - 45, p * 2, p * 7);
 
-      // Hair
       ctx.fillStyle = b.hair;
       if (b.hairStyle === 'flat-top') {
         ctx.fillRect(x - 12, y - 55, p * 8, p * 4);
@@ -977,7 +1370,6 @@
         ctx.fillRect(x + 2, y - 50, p, p);
       }
 
-      // Headband
       if (b.headband) {
         ctx.fillStyle = b.headband;
         ctx.fillRect(x - 12, y - 47, p * 8, p);
@@ -985,7 +1377,6 @@
         ctx.fillRect(x - 12, y - 46, p * 8, p);
       }
 
-      // Eyes
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(x - 7, y - 40, p, p * 2);
       ctx.fillRect(x + 4, y - 40, p, p * 2);
@@ -993,16 +1384,13 @@
       ctx.fillRect(x - 6, y - 39, p, p);
       ctx.fillRect(x + 5, y - 39, p, p);
 
-      // Eyebrows
       ctx.fillStyle = b.hair;
       ctx.fillRect(x - 8, y - 42, p * 2, p);
       ctx.fillRect(x + 3, y - 42, p * 2, p);
 
-      // Nose
       ctx.fillStyle = b.skinShade;
       ctx.fillRect(x - 1, y - 37, p, p * 2);
 
-      // Mouth / accessories
       if (b.grillz) {
         ctx.fillStyle = b.grillz;
         ctx.fillRect(x - 4, y - 32, p * 3, p);
@@ -1060,54 +1448,6 @@
       ctx.stroke();
 
       ctx.restore();
-    }
-
-    function drawMeter(x, y, w, h, value, label, isLeft) {
-      ctx.fillStyle = '#0a0a0a';
-      ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
-      ctx.fillStyle = '#222';
-      ctx.fillRect(x, y, w, h);
-
-      var fillH = (value / 100) * h;
-      var grad = ctx.createLinearGradient(x, y + h, x, y);
-      grad.addColorStop(0, '#22c55e');
-      grad.addColorStop(0.45, '#eab308');
-      grad.addColorStop(0.75, '#f97316');
-      grad.addColorStop(1, '#ef4444');
-      ctx.fillStyle = grad;
-      ctx.fillRect(x, y + h - fillH, w, fillH);
-
-      ctx.fillStyle = 'rgba(34, 197, 94, 0.25)';
-      var zoneTop = y + h - (85/100) * h;
-      var zoneH = (35/100) * h;
-      ctx.fillRect(x, zoneTop, w, zoneH);
-
-      ctx.strokeStyle = '#f97316';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x - 2, y - 2, w + 4, h + 4);
-
-      var indY = y + h - fillH;
-      ctx.fillStyle = '#fff';
-      if (isLeft) {
-        ctx.beginPath();
-        ctx.moveTo(x + w + 4, indY);
-        ctx.lineTo(x + w + 10, indY - 4);
-        ctx.lineTo(x + w + 10, indY + 4);
-        ctx.closePath();
-        ctx.fill();
-      } else {
-        ctx.beginPath();
-        ctx.moveTo(x - 4, indY);
-        ctx.lineTo(x - 10, indY - 4);
-        ctx.lineTo(x - 10, indY + 4);
-        ctx.closePath();
-        ctx.fill();
-      }
-
-      ctx.fillStyle = '#fbbf24';
-      ctx.font = '7px "Press Start 2P"';
-      ctx.textAlign = 'center';
-      ctx.fillText(label, x + w/2, y + h + 14);
     }
 
     function loop() {
