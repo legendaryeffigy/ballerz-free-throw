@@ -4,13 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ballerz Free Throw</title>
-  <link href="[fonts.googleapis.com](https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap)" rel="stylesheet">
+  <link href="[fonts.googleapis.com](https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600;700&display=swap)" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
     body {
       font-family: 'Inter', sans-serif;
-      background: #0a0a0f;
+      background: #1a1a2e;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -21,7 +21,7 @@
     }
 
     .game-wrapper {
-      max-width: 400px;
+      max-width: 420px;
       width: 100%;
       display: flex;
       flex-direction: column;
@@ -30,26 +30,24 @@
 
     .header {
       text-align: center;
-      margin-bottom: 15px;
+      margin-bottom: 10px;
       width: 100%;
     }
 
     .logo {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 2.5rem;
-      letter-spacing: 3px;
-      background: linear-gradient(135deg, #f97316 0%, #fb923c 50%, #fbbf24 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      text-shadow: 0 0 40px rgba(249, 115, 22, 0.3);
+      font-family: 'Press Start 2P', cursive;
+      font-size: 1.4rem;
+      color: #f97316;
+      text-shadow: 3px 3px 0 #7c2d12, -1px -1px 0 #fed7aa;
+      letter-spacing: 2px;
     }
 
     .subtitle {
-      font-size: 0.75rem;
-      color: #6b7280;
-      letter-spacing: 4px;
-      text-transform: uppercase;
-      margin-top: 2px;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 0.5rem;
+      color: #a855f7;
+      margin-top: 5px;
+      letter-spacing: 1px;
     }
 
     .wallet-container {
@@ -58,64 +56,65 @@
       gap: 12px;
       margin-top: 12px;
       padding: 8px 12px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 12px;
+      background: rgba(0,0,0,0.3);
+      border: 2px solid #a855f7;
+      border-radius: 4px;
     }
 
     .wallet-btn {
-      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      background: #a855f7;
       border: none;
-      padding: 8px 16px;
-      border-radius: 8px;
+      padding: 8px 14px;
+      border-radius: 4px;
       color: white;
-      font-size: 0.8rem;
-      font-weight: 600;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 0.45rem;
       cursor: pointer;
       transition: all 0.2s;
     }
 
     .wallet-btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
+      background: #9333ea;
+      transform: scale(1.05);
     }
 
     .wallet-info {
-      font-size: 0.75rem;
-      color: #9ca3af;
+      font-size: 0.7rem;
+      color: #c4b5fd;
     }
 
     .game-container {
       position: relative;
-      border-radius: 16px;
+      border-radius: 8px;
       overflow: hidden;
-      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5), 0 0 60px rgba(249, 115, 22, 0.1);
-      border: 1px solid rgba(255,255,255,0.05);
+      box-shadow: 0 0 0 4px #f97316, 0 0 20px rgba(249, 115, 22, 0.3);
+      margin-top: 15px;
     }
 
     #gameCanvas {
       display: block;
       cursor: pointer;
+      image-rendering: pixelated;
     }
 
     .controls {
       width: 100%;
-      margin-top: 20px;
+      margin-top: 15px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 15px;
+      gap: 12px;
     }
 
     .stats-bar {
       display: flex;
       justify-content: center;
-      gap: 30px;
+      gap: 20px;
       width: 100%;
-      padding: 15px 20px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 12px;
+      padding: 12px 15px;
+      background: rgba(0,0,0,0.4);
+      border: 2px solid #f97316;
+      border-radius: 4px;
     }
 
     .stat {
@@ -123,58 +122,65 @@
     }
 
     .stat-value {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 2rem;
-      color: #f97316;
-      line-height: 1;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 1.2rem;
+      color: #fbbf24;
+      text-shadow: 2px 2px 0 #7c2d12;
     }
 
     .stat-label {
-      font-size: 0.7rem;
-      color: #6b7280;
-      text-transform: uppercase;
-      letter-spacing: 1px;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 0.4rem;
+      color: #9ca3af;
       margin-top: 4px;
     }
 
     .shoot-btn {
       width: 100%;
       max-width: 280px;
-      padding: 16px 40px;
+      padding: 14px 30px;
       border: none;
-      border-radius: 12px;
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 1.5rem;
-      letter-spacing: 3px;
+      border-radius: 4px;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 0.9rem;
       cursor: pointer;
-      transition: all 0.15s;
-      background: linear-gradient(135deg, #f97316, #fb923c);
+      transition: all 0.1s;
+      background: linear-gradient(180deg, #fb923c 0%, #f97316 50%, #ea580c 100%);
       color: white;
-      box-shadow: 0 4px 20px rgba(249, 115, 22, 0.3);
+      box-shadow: 0 4px 0 #9a3412, 0 6px 10px rgba(0,0,0,0.3);
+      text-shadow: 1px 1px 0 #7c2d12;
     }
 
     .shoot-btn:hover {
       transform: translateY(-2px);
-      box-shadow: 0 6px 30px rgba(249, 115, 22, 0.4);
+      box-shadow: 0 6px 0 #9a3412, 0 8px 15px rgba(0,0,0,0.3);
     }
 
     .shoot-btn:active {
-      transform: translateY(0);
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #9a3412;
     }
 
     .instructions {
-      font-size: 0.85rem;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 0.5rem;
       color: #9ca3af;
       text-align: center;
-      min-height: 24px;
+      min-height: 20px;
     }
 
     .instructions.success {
       color: #4ade80;
+      animation: pulse 0.3s ease-in-out;
     }
 
     .instructions.miss {
       color: #f87171;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
     }
   </style>
 </head>
@@ -182,40 +188,42 @@
   <div class="game-wrapper">
     <div class="header">
       <div class="logo">BALLERZ</div>
-      <div class="subtitle">Free Throw Challenge</div>
+      <div class="subtitle">FREE THROW ARCADE</div>
       <div class="wallet-container">
-        <button class="wallet-btn" id="walletBtn">Connect Wallet</button>
-        <span class="wallet-info" id="walletInfo">Play as guest</span>
+        <button class="wallet-btn" id="walletBtn">CONNECT</button>
+        <span class="wallet-info" id="walletInfo">Playing as Guest</span>
       </div>
     </div>
 
     <div class="game-container">
-      <canvas id="gameCanvas" width="380" height="480"></canvas>
+      <canvas id="gameCanvas" width="400" height="500"></canvas>
     </div>
 
     <div class="controls">
       <div class="stats-bar">
         <div class="stat">
           <div class="stat-value" id="score">0</div>
-          <div class="stat-label">Score</div>
+          <div class="stat-label">SCORE</div>
         </div>
         <div class="stat">
           <div class="stat-value" id="streak">0</div>
-          <div class="stat-label">Streak</div>
+          <div class="stat-label">STREAK</div>
         </div>
         <div class="stat">
           <div class="stat-value" id="best">0</div>
-          <div class="stat-label">Best</div>
+          <div class="stat-label">BEST</div>
         </div>
       </div>
-      <button class="shoot-btn" id="shootBtn">SHOOT</button>
-      <div class="instructions" id="instructions">Tap SHOOT to set power</div>
+      <button class="shoot-btn" id="shootBtn">SHOOT!</button>
+      <div class="instructions" id="instructions">PRESS SHOOT TO START</div>
     </div>
   </div>
 
   <script>
     var canvas = document.getElementById('gameCanvas');
     var ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    
     var shootBtn = document.getElementById('shootBtn');
     var walletBtn = document.getElementById('walletBtn');
     var walletInfo = document.getElementById('walletInfo');
@@ -231,19 +239,64 @@
     var hasWallet = false;
     var ball = null;
     var ballTrail = [];
-    var hoop = { x: 190, y: 110, rimWidth: 56 };
-    var player = { x: 190, y: 400 };
+    var hoop = { x: 200, y: 100, rimWidth: 58 };
+    var player = { x: 200, y: 420 };
     var madeShot = false;
+    var netSway = 0;
 
-    // Ballerz character colors
-    var baller = {
-      skin: '#8B6914',
-      jersey: '#f97316',
-      jerseyAlt: '#ea580c',
-      shorts: '#1e1e2e',
-      hair: '#1a1a1a',
-      headband: '#f97316'
-    };
+    // Three Ballerz based on the NFT images provided
+    var ballerTypes = [
+      {
+        // Purple jersey #24 with yellow headband
+        name: 'Purple Flash',
+        bg: '#a855f7',
+        skin: '#8B6914',
+        hair: '#1a1a1a',
+        hairStyle: 'flat',
+        headband: '#fbbf24',
+        jersey: '#a855f7',
+        jerseyAlt: '#7c3aed',
+        trim: '#fbbf24',
+        number: '24',
+        shorts: '#1a1a1a',
+        accessory: 'earring',
+        grillz: true
+      },
+      {
+        // Pink/magenta with afro and orange headband
+        name: 'Pink Phantom',
+        bg: '#a3e635',
+        skin: '#d946ef',
+        hair: '#1a1a1a',
+        hairStyle: 'afro',
+        headband: '#f97316',
+        jersey: '#be185d',
+        jerseyAlt: '#9d174d',
+        trim: '#f97316',
+        number: '4',
+        shorts: '#1a1a1a',
+        accessory: 'chain',
+        grillz: false
+      },
+      {
+        // Light skin with styled hair, colorful jersey
+        name: 'Wave Master',
+        bg: '#c4b5fd',
+        skin: '#deb887',
+        hair: '#4a3728',
+        hairStyle: 'styled',
+        headband: null,
+        jersey: '#06b6d4',
+        jerseyAlt: '#a855f7',
+        trim: '#ec4899',
+        number: '23',
+        shorts: '#1a1a1a',
+        accessory: 'goatee',
+        grillz: false
+      }
+    ];
+
+    var currentBaller = ballerTypes[Math.floor(Math.random() * ballerTypes.length)];
 
     walletBtn.onclick = function() {
       walletInfo.textContent = 'Coming soon!';
@@ -253,33 +306,29 @@
     function handleShoot() {
       if (phase === 'ready') {
         phase = 'power';
-        instructions.textContent = 'Tap to set power';
+        instructions.textContent = 'SET POWER!';
         instructions.className = 'instructions';
       } else if (phase === 'power') {
         phase = 'aim';
-        instructions.textContent = 'Tap to set aim';
+        instructions.textContent = 'SET AIM!';
       } else if (phase === 'aim') {
         phase = 'shooting';
         instructions.textContent = '';
         madeShot = false;
         
-        // Calculate shot - power affects height, aim affects direction
-        // Sweet spot: power 60-90, aim close to 0
         var powerFactor = power / 100;
         var aimFactor = aim / 100;
         
-        // Base trajectory aimed at hoop, adjusted by player input
-        var targetVY = -13 - (powerFactor * 3); // -13 to -16
-        var targetVX = aimFactor * 3; // -3 to 3
+        var targetVY = -13.5 - (powerFactor * 3);
+        var targetVX = aimFactor * 3.5;
         
-        // Add slight homing toward hoop for better feel
-        var aimAssist = 0.3;
-        var hoopDir = (hoop.x - (player.x + 35)) * 0.01;
+        var aimAssist = 0.25;
+        var hoopDir = (hoop.x - (player.x)) * 0.008;
         targetVX = targetVX * (1 - aimAssist) + hoopDir * aimAssist;
         
         ball = {
-          x: player.x + 35,
-          y: player.y - 50,
+          x: player.x,
+          y: player.y - 60,
           vx: targetVX,
           vy: targetVY,
           gravity: 0.28,
@@ -293,34 +342,35 @@
     canvas.onclick = handleShoot;
 
     function update() {
-      // Slower meter speeds for easier timing
       if (phase === 'power') {
-        power += powerDir * 1.5;
+        power += powerDir * 1.4;
         if (power >= 100) { power = 100; powerDir = -1; }
         if (power <= 0) { power = 0; powerDir = 1; }
       } else if (phase === 'aim') {
-        aim += aimDir * 1.8;
+        aim += aimDir * 1.6;
         if (aim >= 100) { aim = 100; aimDir = -1; }
         if (aim <= -100) { aim = -100; aimDir = 1; }
       }
 
+      // Net physics
+      if (netSway > 0) netSway *= 0.95;
+
       if (ball && !madeShot) {
         ballTrail.push({ x: ball.x, y: ball.y });
-        if (ballTrail.length > 12) ballTrail.shift();
+        if (ballTrail.length > 10) ballTrail.shift();
 
         ball.vy += ball.gravity;
         ball.x += ball.vx;
         ball.y += ball.vy;
-        ball.rotation += ball.vx * 0.15;
+        ball.rotation += ball.vx * 0.12;
 
-        // Generous scoring zone - check when ball is near rim height and falling
-        if (ball.vy > 0 && ball.y >= hoop.y - 5 && ball.y <= hoop.y + 35) {
+        if (ball.vy > 0 && ball.y >= hoop.y - 5 && ball.y <= hoop.y + 40) {
           var hoopLeft = hoop.x - hoop.rimWidth / 2;
           var hoopRight = hoop.x + hoop.rimWidth / 2;
           
-          // Wide scoring zone
-          if (ball.x > hoopLeft + 5 && ball.x < hoopRight - 5) {
+          if (ball.x > hoopLeft + 8 && ball.x < hoopRight - 8) {
             madeShot = true;
+            netSway = 1;
             score++;
             streak++;
             if (streak > best) best = streak;
@@ -329,22 +379,19 @@
             return;
           }
           
-          // Rim bounce - only on edges
-          if ((ball.x > hoopLeft - 5 && ball.x < hoopLeft + 8) || 
-              (ball.x > hoopRight - 8 && ball.x < hoopRight + 5)) {
-            // 40% chance to bounce in
-            if (Math.random() < 0.4) {
-              ball.vx = (hoop.x - ball.x) * 0.1;
-              ball.vy = -3;
+          if ((ball.x > hoopLeft - 5 && ball.x < hoopLeft + 10) || 
+              (ball.x > hoopRight - 10 && ball.x < hoopRight + 5)) {
+            if (Math.random() < 0.35) {
+              ball.vx = (hoop.x - ball.x) * 0.12;
+              ball.vy = -2.5;
             } else {
-              ball.vx = ball.x < hoop.x ? -2 : 2;
-              ball.vy = -2;
+              ball.vx = ball.x < hoop.x ? -2.5 : 2.5;
+              ball.vy = -1.5;
             }
           }
         }
 
-        // Miss - ball off screen
-        if (ball.y > 550 || ball.x < -50 || ball.x > 430) {
+        if (ball.y > 580 || ball.x < -50 || ball.x > 450) {
           streak = 0;
           updateStats();
           endShot(false);
@@ -354,10 +401,10 @@
 
     function endShot(made) {
       if (made) {
-        instructions.textContent = 'SWISH! 🔥';
+        instructions.textContent = 'SWISH! +' + streak;
         instructions.className = 'instructions success';
       } else {
-        instructions.textContent = 'Miss!';
+        instructions.textContent = 'MISS!';
         instructions.className = 'instructions miss';
       }
       
@@ -367,9 +414,11 @@
         phase = 'ready';
         power = 0;
         aim = 0;
-        instructions.textContent = 'Tap SHOOT to set power';
+        // Random new baller each shot
+        currentBaller = ballerTypes[Math.floor(Math.random() * ballerTypes.length)];
+        instructions.textContent = 'PRESS SHOOT';
         instructions.className = 'instructions';
-      }, 1000);
+      }, 1200);
     }
 
     function updateStats() {
@@ -378,233 +427,282 @@
       bestEl.textContent = best;
     }
 
+    function drawPixelRect(x, y, w, h, color) {
+      ctx.fillStyle = color;
+      ctx.fillRect(Math.floor(x), Math.floor(y), Math.floor(w), Math.floor(h));
+    }
+
     function draw() {
-      // Background gradient
-      var bgGrad = ctx.createLinearGradient(0, 0, 0, 480);
-      bgGrad.addColorStop(0, '#0f0f1a');
-      bgGrad.addColorStop(0.6, '#1a1a2e');
-      bgGrad.addColorStop(1, '#252540');
+      // Background - arcade style gradient
+      var bgGrad = ctx.createLinearGradient(0, 0, 0, 500);
+      bgGrad.addColorStop(0, '#1e1b4b');
+      bgGrad.addColorStop(0.5, '#312e81');
+      bgGrad.addColorStop(1, '#1e1b4b');
       ctx.fillStyle = bgGrad;
-      ctx.fillRect(0, 0, 380, 480);
+      ctx.fillRect(0, 0, 400, 500);
 
-      // Court floor
-      var courtGrad = ctx.createLinearGradient(0, 340, 0, 480);
-      courtGrad.addColorStop(0, '#b84c2f');
-      courtGrad.addColorStop(1, '#8b3a24');
-      ctx.fillStyle = courtGrad;
-      ctx.fillRect(0, 340, 380, 140);
-
-      // Court lines
-      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      // Arcade cabinet frame lines
+      ctx.strokeStyle = '#4c1d95';
       ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(190, 480, 110, Math.PI, 0);
-      ctx.stroke();
-
-      // Free throw line
-      ctx.beginPath();
-      ctx.moveTo(60, 380);
-      ctx.lineTo(320, 380);
-      ctx.stroke();
-
-      // Backboard shadow
-      ctx.fillStyle = 'rgba(0,0,0,0.3)';
-      ctx.fillRect(138, 48, 104, 72);
-
-      // Backboard
-      var bbGrad = ctx.createLinearGradient(135, 45, 135, 115);
-      bbGrad.addColorStop(0, '#ffffff');
-      bbGrad.addColorStop(1, '#e5e5e5');
-      ctx.fillStyle = bbGrad;
-      ctx.fillRect(135, 45, 110, 70);
-      
-      // Backboard border
-      ctx.strokeStyle = '#333';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(135, 45, 110, 70);
-
-      // Backboard square
-      ctx.strokeStyle = '#f97316';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(165, 60, 50, 38);
-
-      // Rim
-      ctx.strokeStyle = '#f97316';
-      ctx.lineWidth = 5;
-      ctx.beginPath();
-      ctx.moveTo(hoop.x - hoop.rimWidth / 2, hoop.y);
-      ctx.lineTo(hoop.x + hoop.rimWidth / 2, hoop.y);
-      ctx.stroke();
-
-      // Rim connector
-      ctx.fillStyle = '#888';
-      ctx.fillRect(185, 100, 10, 10);
-
-      // Net
-      ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-      ctx.lineWidth = 1.5;
-      for (var i = 0; i < 7; i++) {
-        var nx = hoop.x - hoop.rimWidth / 2 + 4 + i * 8;
-        var sway = ball && ball.y > hoop.y && ball.y < hoop.y + 50 ? Math.sin(Date.now() / 50 + i) * 3 : 0;
+      for (var i = 0; i < 5; i++) {
         ctx.beginPath();
-        ctx.moveTo(nx, hoop.y + 2);
-        ctx.quadraticCurveTo(nx + sway, hoop.y + 25, hoop.x, hoop.y + 45);
+        ctx.moveTo(0, i * 100 + 50);
+        ctx.lineTo(20, i * 100 + 50);
+        ctx.moveTo(380, i * 100 + 50);
+        ctx.lineTo(400, i * 100 + 50);
         ctx.stroke();
       }
 
-      // Draw Baller
-      drawBaller(player.x, player.y);
+      // Court floor with wood texture
+      var courtGrad = ctx.createLinearGradient(0, 320, 0, 500);
+      courtGrad.addColorStop(0, '#d97706');
+      courtGrad.addColorStop(0.3, '#b45309');
+      courtGrad.addColorStop(0.6, '#d97706');
+      courtGrad.addColorStop(1, '#92400e');
+      ctx.fillStyle = courtGrad;
+      ctx.fillRect(0, 320, 400, 180);
+
+      // Wood grain lines
+      ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+      ctx.lineWidth = 1;
+      for (var w = 0; w < 400; w += 25) {
+        ctx.beginPath();
+        ctx.moveTo(w, 320);
+        ctx.lineTo(w, 500);
+        ctx.stroke();
+      }
+
+      // THE KEY (paint area)
+      ctx.fillStyle = 'rgba(185, 28, 28, 0.8)';
+      ctx.fillRect(120, 320, 160, 180);
+      
+      // Key outline
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(120, 320, 160, 180);
+
+      // Free throw line
+      ctx.beginPath();
+      ctx.moveTo(120, 400);
+      ctx.lineTo(280, 400);
+      ctx.stroke();
+
+      // Free throw circle (top half)
+      ctx.beginPath();
+      ctx.arc(200, 400, 50, Math.PI, 0);
+      ctx.stroke();
+
+      // Lane lines (hash marks)
+      for (var h = 340; h < 400; h += 15) {
+        ctx.beginPath();
+        ctx.moveTo(115, h);
+        ctx.lineTo(125, h);
+        ctx.moveTo(275, h);
+        ctx.lineTo(285, h);
+        ctx.stroke();
+      }
+
+      // Restricted area arc
+      ctx.beginPath();
+      ctx.arc(200, 340, 30, Math.PI, 0);
+      ctx.stroke();
+
+      // Backboard shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(147, 52, 106, 58);
+
+      // Backboard
+      drawPixelRect(145, 48, 110, 60, '#ffffff');
+      drawPixelRect(145, 48, 110, 4, '#cccccc');
+      drawPixelRect(145, 48, 4, 60, '#cccccc');
+      
+      // Backboard square
+      ctx.strokeStyle = '#f97316';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(170, 58, 60, 40);
+
+      // Backboard support
+      drawPixelRect(195, 105, 10, 20, '#666666');
+
+      // Rim - pixel style
+      ctx.fillStyle = '#f97316';
+      ctx.fillRect(hoop.x - hoop.rimWidth/2, hoop.y - 3, hoop.rimWidth, 6);
+      ctx.fillStyle = '#ea580c';
+      ctx.fillRect(hoop.x - hoop.rimWidth/2, hoop.y + 1, hoop.rimWidth, 2);
+
+      // Rim connectors
+      drawPixelRect(hoop.x - hoop.rimWidth/2 - 3, hoop.y - 2, 6, 4, '#888');
+      drawPixelRect(hoop.x + hoop.rimWidth/2 - 3, hoop.y - 2, 6, 4, '#888');
+
+      // Net - pixel style with sway
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      var swayAmount = Math.sin(Date.now() / 80) * netSway * 8;
+      for (var n = 0; n < 7; n++) {
+        var nx = hoop.x - hoop.rimWidth/2 + 6 + n * 8;
+        var sway = swayAmount * (1 - Math.abs(n - 3) / 4);
+        ctx.beginPath();
+        ctx.moveTo(nx, hoop.y + 3);
+        ctx.lineTo(nx + sway * 0.5, hoop.y + 20);
+        ctx.lineTo(hoop.x + sway, hoop.y + 45);
+        ctx.stroke();
+      }
+      // Horizontal net lines
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(hoop.x - 20 + swayAmount * 0.3, hoop.y + 18);
+      ctx.lineTo(hoop.x + 20 + swayAmount * 0.3, hoop.y + 18);
+      ctx.moveTo(hoop.x - 12 + swayAmount * 0.6, hoop.y + 32);
+      ctx.lineTo(hoop.x + 12 + swayAmount * 0.6, hoop.y + 32);
+      ctx.stroke();
 
       // Ball trail
-      for (var j = 0; j < ballTrail.length; j++) {
-        var alpha = (j / ballTrail.length) * 0.4;
+      for (var t = 0; t < ballTrail.length; t++) {
+        var alpha = (t / ballTrail.length) * 0.5;
+        var size = 8 + (t / ballTrail.length) * 6;
         ctx.fillStyle = 'rgba(249, 115, 22, ' + alpha + ')';
         ctx.beginPath();
-        ctx.arc(ballTrail[j].x, ballTrail[j].y, 10, 0, Math.PI * 2);
+        ctx.arc(ballTrail[t].x, ballTrail[t].y, size, 0, Math.PI * 2);
         ctx.fill();
       }
 
+      // Draw Baller
+      drawPixelBaller(player.x, player.y, currentBaller);
+
       // Ball
       if (ball) {
-        drawBall(ball.x, ball.y, 14, ball.rotation);
-      } else if (phase === 'ready' || phase === 'power' || phase === 'aim') {
-        drawBall(player.x + 35, player.y - 50, 14, 0);
+        drawPixelBall(ball.x, ball.y, 16, ball.rotation);
+      } else if (phase !== 'shooting') {
+        drawPixelBall(player.x + 30, player.y - 55, 14, 0);
       }
 
-      // Power meter
+      // Power meter - arcade style
       if (phase === 'power' || phase === 'aim' || phase === 'shooting') {
-        drawPowerMeter();
+        drawArcadeMeter(25, 140, 20, 150, power, 'PWR', true);
       }
 
       // Aim meter
       if (phase === 'aim' || phase === 'shooting') {
-        drawAimMeter();
+        drawArcadeMeter(355, 140, 20, 150, (aim + 100) / 2, 'AIM', false);
       }
     }
 
-    function drawBaller(x, y) {
+    function drawPixelBaller(x, y, b) {
+      var px = 4; // pixel size
+
       // Shadow
       ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.beginPath();
-      ctx.ellipse(x, y + 45, 25, 8, 0, 0, Math.PI * 2);
+      ctx.ellipse(x, y + 50, 25, 8, 0, 0, Math.PI * 2);
       ctx.fill();
 
       // Legs
-      ctx.fillStyle = baller.skin;
-      ctx.fillRect(x - 15, y + 5, 12, 35);
-      ctx.fillRect(x + 3, y + 5, 12, 35);
-
-      // Shorts
-      ctx.fillStyle = baller.shorts;
-      ctx.beginPath();
-      ctx.moveTo(x - 18, y - 5);
-      ctx.lineTo(x + 18, y - 5);
-      ctx.lineTo(x + 16, y + 18);
-      ctx.lineTo(x - 16, y + 18);
-      ctx.closePath();
-      ctx.fill();
-
-      // Body/Jersey
-      var jerseyGrad = ctx.createLinearGradient(x - 20, y - 40, x + 20, y);
-      jerseyGrad.addColorStop(0, baller.jersey);
-      jerseyGrad.addColorStop(1, baller.jerseyAlt);
-      ctx.fillStyle = jerseyGrad;
-      ctx.beginPath();
-      ctx.moveTo(x - 18, y - 5);
-      ctx.lineTo(x - 22, y - 35);
-      ctx.lineTo(x - 15, y - 45);
-      ctx.lineTo(x + 15, y - 45);
-      ctx.lineTo(x + 22, y - 35);
-      ctx.lineTo(x + 18, y - 5);
-      ctx.closePath();
-      ctx.fill();
-
-      // Jersey number
-      ctx.fillStyle = 'white';
-      ctx.font = 'bold 16px Inter';
-      ctx.textAlign = 'center';
-      ctx.fillText('23', x, y - 18);
-
-      // Shooting arm
-      ctx.fillStyle = baller.skin;
-      ctx.save();
-      ctx.translate(x + 15, y - 35);
-      ctx.rotate(-0.8);
-      ctx.fillRect(0, -5, 30, 10);
-      ctx.beginPath();
-      ctx.arc(30, 0, 7, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-
-      // Other arm
-      ctx.fillStyle = baller.skin;
-      ctx.save();
-      ctx.translate(x - 15, y - 30);
-      ctx.rotate(0.3);
-      ctx.fillRect(-25, -4, 25, 9);
-      ctx.restore();
-
-      // Head
-      ctx.fillStyle = baller.skin;
-      ctx.beginPath();
-      ctx.arc(x, y - 58, 18, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Hair/afro
-      ctx.fillStyle = baller.hair;
-      ctx.beginPath();
-      ctx.arc(x, y - 65, 20, Math.PI, 0);
-      ctx.fill();
-
-      // Headband
-      ctx.fillStyle = baller.headband;
-      ctx.fillRect(x - 18, y - 68, 36, 6);
-
-      // Eyes
-      ctx.fillStyle = 'white';
-      ctx.beginPath();
-      ctx.arc(x - 6, y - 58, 4, 0, Math.PI * 2);
-      ctx.arc(x + 6, y - 58, 4, 0, Math.PI * 2);
-      ctx.fill();
-      
-      ctx.fillStyle = '#1a1a1a';
-      ctx.beginPath();
-      ctx.arc(x - 5, y - 58, 2, 0, Math.PI * 2);
-      ctx.arc(x + 7, y - 58, 2, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Confident smile
-      ctx.strokeStyle = '#1a1a1a';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(x, y - 52, 6, 0.2, Math.PI - 0.2);
-      ctx.stroke();
+      drawPixelRect(x - 14, y + 5, px * 3, px * 9, b.skin);
+      drawPixelRect(x + 2, y + 5, px * 3, px * 9, b.skin);
 
       // Shoes
-      ctx.fillStyle = '#f97316';
-      ctx.fillRect(x - 18, y + 38, 16, 8);
-      ctx.fillRect(x + 2, y + 38, 16, 8);
+      drawPixelRect(x - 16, y + 40, px * 4, px * 2, '#1a1a1a');
+      drawPixelRect(x, y + 40, px * 4, px * 2, '#1a1a1a');
+      // Shoe detail
+      drawPixelRect(x - 16, y + 40, px * 4, px, b.trim);
+      drawPixelRect(x, y + 40, px * 4, px, b.trim);
+
+      // Shorts
+      drawPixelRect(x - 16, y - 5, px * 8, px * 4, b.shorts);
+      // Shorts stripe
+      drawPixelRect(x - 16, y - 2, px * 8, px, b.trim);
+
+      // Jersey body
+      drawPixelRect(x - 18, y - 30, px * 9, px * 7, b.jersey);
+      // Jersey gradient/shading
+      drawPixelRect(x - 18, y - 30, px * 9, px * 2, b.jerseyAlt);
+      // Jersey trim
+      drawPixelRect(x - 18, y - 30, px, px * 7, b.trim);
+      drawPixelRect(x + 14, y - 30, px, px * 7, b.trim);
+      
+      // Jersey number
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 14px "Press Start 2P"';
+      ctx.textAlign = 'center';
+      ctx.fillText(b.number, x, y - 12);
+
+      // Arms
+      drawPixelRect(x - 24, y - 26, px * 2, px * 5, b.skin);
+      // Shooting arm (raised)
+      drawPixelRect(x + 18, y - 35, px * 2, px * 3, b.skin);
+      drawPixelRect(x + 22, y - 42, px * 2, px * 3, b.skin);
+      // Hand
+      drawPixelRect(x + 24, y - 48, px * 2, px * 2, b.skin);
+
+      // Neck
+      drawPixelRect(x - 4, y - 35, px * 2, px * 2, b.skin);
+
+      // Head
+      drawPixelRect(x - 14, y - 60, px * 7, px * 7, b.skin);
+
+      // Hair
+      if (b.hairStyle === 'flat') {
+        drawPixelRect(x - 16, y - 72, px * 8, px * 4, b.hair);
+        drawPixelRect(x - 12, y - 68, px * 6, px * 2, b.hair);
+      } else if (b.hairStyle === 'afro') {
+        drawPixelRect(x - 20, y - 80, px * 10, px * 6, b.hair);
+        drawPixelRect(x - 16, y - 74, px * 8, px * 2, b.hair);
+        drawPixelRect(x - 18, y - 68, px, px * 5, b.hair);
+        drawPixelRect(x + 14, y - 68, px, px * 5, b.hair);
+      } else if (b.hairStyle === 'styled') {
+        drawPixelRect(x - 12, y - 68, px * 7, px * 3, b.hair);
+        drawPixelRect(x - 8, y - 72, px * 5, px * 2, b.hair);
+        drawPixelRect(x + 6, y - 70, px * 3, px * 3, b.hair);
+      }
+
+      // Headband
+      if (b.headband) {
+        drawPixelRect(x - 16, y - 62, px * 8, px, b.headband);
+      }
+
+      // Eyes
+      drawPixelRect(x - 10, y - 54, px, px, '#1a1a1a');
+      drawPixelRect(x + 6, y - 54, px, px, '#1a1a1a');
+
+      // Mouth / expression
+      if (b.grillz) {
+        drawPixelRect(x - 6, y - 46, px * 3, px, '#fbbf24');
+      } else {
+        drawPixelRect(x - 4, y - 46, px * 2, px, '#1a1a1a');
+      }
+
+      // Accessories
+      if (b.accessory === 'earring') {
+        drawPixelRect(x - 16, y - 52, px, px, '#fbbf24');
+      } else if (b.accessory === 'chain') {
+        drawPixelRect(x - 6, y - 32, px * 3, px, '#fbbf24');
+        drawPixelRect(x - 4, y - 30, px * 2, px, '#fbbf24');
+      } else if (b.accessory === 'goatee') {
+        drawPixelRect(x - 4, y - 44, px * 2, px * 2, b.hair);
+      }
     }
 
-    function drawBall(x, y, r, rotation) {
+    function drawPixelBall(x, y, r, rotation) {
       ctx.save();
       ctx.translate(x, y);
-      ctx.rotate(rotation);
-
-      // Ball gradient
-      var ballGrad = ctx.createRadialGradient(-3, -3, 0, 0, 0, r);
-      ballGrad.addColorStop(0, '#ff8c42');
-      ballGrad.addColorStop(0.8, '#f97316');
-      ballGrad.addColorStop(1, '#c2410c');
       
-      ctx.fillStyle = ballGrad;
+      // Ball base
+      ctx.fillStyle = '#f97316';
       ctx.beginPath();
       ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.fill();
 
+      // Ball highlight
+      ctx.fillStyle = '#fb923c';
+      ctx.beginPath();
+      ctx.arc(-r/3, -r/3, r/2, 0, Math.PI * 2);
+      ctx.fill();
+
       // Ball lines
       ctx.strokeStyle = '#7c2d12';
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 2;
+      
+      ctx.rotate(rotation);
       
       ctx.beginPath();
       ctx.moveTo(0, -r);
@@ -617,112 +715,70 @@
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.arc(0, 0, r * 0.6, -0.5, 0.5);
+      ctx.arc(r * 0.4, 0, r * 0.7, -0.8, 0.8);
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.arc(0, 0, r * 0.6, Math.PI - 0.5, Math.PI + 0.5);
+      ctx.arc(-r * 0.4, 0, r * 0.7, Math.PI - 0.8, Math.PI + 0.8);
       ctx.stroke();
 
       ctx.restore();
     }
 
-    function drawPowerMeter() {
-      var mx = 30, my = 150, mw = 16, mh = 140;
-
-      // Meter background
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      roundRect(ctx, mx - 4, my - 4, mw + 8, mh + 8, 8);
-      ctx.fill();
-
-      // Meter track
+    function drawArcadeMeter(x, y, w, h, value, label, isLeft) {
+      // Outer frame
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
+      
+      // Inner track
       ctx.fillStyle = '#333';
-      ctx.fillRect(mx, my, mw, mh);
+      ctx.fillRect(x, y, w, h);
 
-      // Power fill
-      var fillHeight = (power / 100) * mh;
-      var powerGrad = ctx.createLinearGradient(mx, my + mh, mx, my);
-      powerGrad.addColorStop(0, '#22c55e');
-      powerGrad.addColorStop(0.5, '#eab308');
-      powerGrad.addColorStop(1, '#ef4444');
-      ctx.fillStyle = powerGrad;
-      ctx.fillRect(mx, my + mh - fillHeight, mw, fillHeight);
+      // Value fill
+      var fillHeight = (value / 100) * h;
+      var grad = ctx.createLinearGradient(x, y + h, x, y);
+      grad.addColorStop(0, '#22c55e');
+      grad.addColorStop(0.4, '#eab308');
+      grad.addColorStop(0.7, '#f97316');
+      grad.addColorStop(1, '#ef4444');
+      ctx.fillStyle = grad;
+      ctx.fillRect(x, y + h - fillHeight, w, fillHeight);
 
-      // Sweet spot (larger - 50% to 90%)
-      var sweetTop = my + mh - (90 / 100) * mh;
-      var sweetBottom = my + mh - (50 / 100) * mh;
+      // Sweet spot zone (50-85%)
       ctx.fillStyle = 'rgba(34, 197, 94, 0.3)';
-      ctx.fillRect(mx - 2, sweetTop, mw + 4, sweetBottom - sweetTop);
+      var sweetTop = y + h - (85 / 100) * h;
+      var sweetHeight = (35 / 100) * h;
+      ctx.fillRect(x - 2, sweetTop, w + 4, sweetHeight);
 
-      // Border
-      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      // Indicator arrow
+      var indicatorY = y + h - fillHeight;
+      ctx.fillStyle = '#ffffff';
+      if (isLeft) {
+        ctx.beginPath();
+        ctx.moveTo(x + w + 5, indicatorY);
+        ctx.lineTo(x + w + 12, indicatorY - 5);
+        ctx.lineTo(x + w + 12, indicatorY + 5);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(x - 5, indicatorY);
+        ctx.lineTo(x - 12, indicatorY - 5);
+        ctx.lineTo(x - 12, indicatorY + 5);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Frame border
+      ctx.strokeStyle = '#f97316';
       ctx.lineWidth = 2;
-      ctx.strokeRect(mx, my, mw, mh);
+      ctx.strokeRect(x - 3, y - 3, w + 6, h + 6);
 
       // Label
-      ctx.fillStyle = '#9ca3af';
-      ctx.font = '10px Inter';
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = '8px "Press Start 2P"';
       ctx.textAlign = 'center';
-      ctx.fillText('PWR', mx + mw / 2, my + mh + 18);
-    }
-
-    function drawAimMeter() {
-      var mx = 90, my = 310, mw = 200, mh = 12;
-
-      // Meter background
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      roundRect(ctx, mx - 4, my - 4, mw + 8, mh + 8, 6);
-      ctx.fill();
-
-      // Meter track
-      ctx.fillStyle = '#333';
-      ctx.fillRect(mx, my, mw, mh);
-
-      // Center zone (larger - 40% of meter)
-      ctx.fillStyle = 'rgba(34, 197, 94, 0.3)';
-      ctx.fillRect(mx + mw * 0.3, my, mw * 0.4, mh);
-
-      // Aim indicator
-      var aimX = mx + mw / 2 + (aim / 100) * (mw / 2);
-      ctx.fillStyle = '#f97316';
-      ctx.beginPath();
-      ctx.moveTo(aimX, my - 6);
-      ctx.lineTo(aimX - 6, my - 14);
-      ctx.lineTo(aimX + 6, my - 14);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.moveTo(aimX, my + mh + 6);
-      ctx.lineTo(aimX - 6, my + mh + 14);
-      ctx.lineTo(aimX + 6, my + mh + 14);
-      ctx.closePath();
-      ctx.fill();
-
-      // Border
-      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(mx, my, mw, mh);
-
-      // Label
-      ctx.fillStyle = '#9ca3af';
-      ctx.font = '10px Inter';
-      ctx.textAlign = 'center';
-      ctx.fillText('AIM', mx + mw / 2, my + mh + 26);
-    }
-
-    function roundRect(ctx, x, y, w, h, r) {
-      ctx.beginPath();
-      ctx.moveTo(x + r, y);
-      ctx.lineTo(x + w - r, y);
-      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-      ctx.lineTo(x + w, y + h - r);
-      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-      ctx.lineTo(x + r, y + h);
-      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-      ctx.lineTo(x, y + r);
-      ctx.quadraticCurveTo(x, y, x + r, y);
-      ctx.closePath();
+      ctx.fillText(label, x + w/2, y + h + 18);
     }
 
     function loop() {
