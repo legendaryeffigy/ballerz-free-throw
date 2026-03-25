@@ -6,75 +6,38 @@
   <title>Ballerz Free Throw</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       color: white;
       padding: 10px;
-      overflow-x: hidden;
     }
-    
     .header { padding: 10px; text-align: center; }
-    
     .header h1 {
       font-size: 1.8rem;
       background: linear-gradient(90deg, #ff6b35, #f7c59f);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      background-clip: text;
     }
-    
     .wallet-btn {
       background: linear-gradient(90deg, #667eea, #764ba2);
       border: none;
       padding: 8px 16px;
       border-radius: 20px;
       color: white;
-      font-size: 0.85rem;
       cursor: pointer;
       margin-top: 8px;
     }
-    
-    .wallet-btn:hover { transform: scale(1.05); }
-    
-    .wallet-info {
-      font-size: 0.8rem;
-      color: #a0a0a0;
-      margin-top: 5px;
-    }
-    
-    #gameCanvas {
-      border-radius: 10px;
-      margin: 10px 0;
-      touch-action: none;
-    }
-    
-    .controls {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-    }
-    
-    .stats {
-      display: flex;
-      gap: 25px;
-      font-size: 1rem;
-    }
-    
+    .wallet-info { font-size: 0.8rem; color: #a0a0a0; margin-top: 5px; }
+    #gameCanvas { border-radius: 10px; margin: 10px 0; cursor: pointer; }
+    .controls { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .stats { display: flex; gap: 25px; }
     .stat { text-align: center; }
-    
-    .stat-value {
-      font-size: 1.5rem;
-      font-weight: bold;
-      color: #ff6b35;
-    }
-    
+    .stat-value { font-size: 1.5rem; font-weight: bold; color: #ff6b35; }
     .shoot-btn {
       background: linear-gradient(90deg, #ff6b35, #ff8c42);
       border: none;
@@ -85,14 +48,7 @@
       font-weight: bold;
       cursor: pointer;
     }
-    
-    .shoot-btn:active { transform: scale(0.95); }
-    
-    .instructions {
-      color: #a0a0a0;
-      font-size: 0.85rem;
-      text-align: center;
-    }
+    .instructions { color: #a0a0a0; font-size: 0.85rem; }
   </style>
 </head>
 <body>
@@ -101,83 +57,45 @@
     <button class="wallet-btn" id="walletBtn">Connect Flow Wallet</button>
     <div class="wallet-info" id="walletInfo">Play as guest or connect wallet</div>
   </div>
-  
   <canvas id="gameCanvas" width="360" height="450"></canvas>
-  
   <div class="controls">
     <div class="stats">
-      <div class="stat">
-        <div class="stat-value" id="score">0</div>
-        <div>Score</div>
-      </div>
-      <div class="stat">
-        <div class="stat-value" id="streak">0</div>
-        <div>Streak</div>
-      </div>
-      <div class="stat">
-        <div class="stat-value" id="best">0</div>
-        <div>Best</div>
-      </div>
+      <div class="stat"><div class="stat-value" id="score">0</div><div>Score</div></div>
+      <div class="stat"><div class="stat-value" id="streak">0</div><div>Streak</div></div>
+      <div class="stat"><div class="stat-value" id="best">0</div><div>Best</div></div>
     </div>
     <button class="shoot-btn" id="shootBtn">SHOOT</button>
     <div class="instructions" id="instructions">Tap SHOOT to set power</div>
   </div>
 
-  <script src="[cdn.jsdelivr.net](https://cdn.jsdelivr.net/npm/@onflow/fcl@1.9.0/dist/fcl.min.js)"></script>
-  
   <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    const shootBtn = document.getElementById('shootBtn');
-    const walletBtn = document.getElementById('walletBtn');
-    const walletInfo = document.getElementById('walletInfo');
-    const instructions = document.getElementById('instructions');
-    const scoreEl = document.getElementById('score');
-    const streakEl = document.getElementById('streak');
-    const bestEl = document.getElementById('best');
+    var canvas = document.getElementById('gameCanvas');
+    var ctx = canvas.getContext('2d');
+    var shootBtn = document.getElementById('shootBtn');
+    var walletBtn = document.getElementById('walletBtn');
+    var walletInfo = document.getElementById('walletInfo');
+    var instructions = document.getElementById('instructions');
+    var scoreEl = document.getElementById('score');
+    var streakEl = document.getElementById('streak');
+    var bestEl = document.getElementById('best');
 
-    // Game state
-    let phase = 'power'; // 'power', 'aim', 'shooting'
-    let power = 0;
-    let powerDir = 1;
-    let aim = 0;
-    let aimDir = 1;
-    let score = 0;
-    let streak = 0;
-    let best = 0;
-    let hasWallet = false;
+    var phase = 'power';
+    var power = 0, powerDir = 1;
+    var aim = 0, aimDir = 1;
+    var score = 0, streak = 0, best = 0;
+    var hasWallet = false;
+    var ball = null;
+    var ballTrail = [];
+    var hoop = { x: 180, y: 90, rimWidth: 50 };
+    var player = { x: 180, y: 380 };
 
-    // Ball physics
-    let ball = null;
-    let ballTrail = [];
+    walletBtn.onclick = function() {
+      walletInfo.textContent = 'Wallet connect coming soon!';
+      hasWallet = true;
+    };
 
-    // Court setup
-    const hoop = { x: 180, y: 90, rimWidth: 50 };
-    const player = { x: 180, y: 380 };
-
-    // Flow wallet config
-    fcl.config({
-      "app.detail.title": "Ballerz Free Throw",
-      "accessNode.api": "[rest-mainnet.onflow.org](https://rest-mainnet.onflow.org)",
-      "discovery.wallet": "[fcl-discovery.onflow.org](https://fcl-discovery.onflow.org/authn)"
-    });
-
-    walletBtn.addEventListener('click', async () => {
-      try {
-        await fcl.authenticate();
-        const user = await fcl.currentUser.snapshot();
-        if (user.loggedIn) {
-          hasWallet = true;
-          walletBtn.textContent = user.addr.slice(0, 6) + '...' + user.addr.slice(-4);
-          walletInfo.textContent = 'Connected! 🏀';
-        }
-      } catch (e) {
-        walletInfo.textContent = 'Connection failed';
-      }
-    });
-
-    shootBtn.addEventListener('click', handleShoot);
-    canvas.addEventListener('click', handleShoot);
+    shootBtn.onclick = handleShoot;
+    canvas.onclick = handleShoot;
 
     function handleShoot() {
       if (phase === 'power') {
@@ -186,63 +104,55 @@
       } else if (phase === 'aim') {
         phase = 'shooting';
         instructions.textContent = 'Watch the shot...';
-        shootBall();
+        ball = {
+          x: player.x,
+          y: player.y - 30,
+          vx: (aim / 100) * 60 * 0.08,
+          vy: -12 * (0.8 + (power / 100) * 0.5),
+          gravity: 0.35
+        };
+        ballTrail = [];
       }
     }
 
-    function shootBall() {
-      const aimOffset = (aim / 100) * 60;
-      const powerMultiplier = 0.8 + (power / 100) * 0.5;
-      
-      ball = {
-        x: player.x,
-        y: player.y - 30,
-        vx: aimOffset * 0.08,
-        vy: -12 * powerMultiplier,
-        gravity: 0.35
-      };
-      ballTrail = [];
-    }
+    function update() {
+      if (phase === 'power') {
+        power += powerDir * 2.5;
+        if (power >= 100 || power <= 0) powerDir *= -1;
+      } else if (phase === 'aim') {
+        aim += aimDir * 3;
+        if (aim >= 100 || aim <= -100) aimDir *= -1;
+      }
 
-    function updateBall() {
-      if (!ball) return;
-      
-      // Store trail
-      ballTrail.push({ x: ball.x, y: ball.y });
-      if (ballTrail.length > 15) ballTrail.shift();
-      
-      // Physics
-      ball.vy += ball.gravity;
-      ball.x += ball.vx;
-      ball.y += ball.vy;
-      
-      // Check if ball is at hoop height
-      if (ball.y >= hoop.y - 10 && ball.y <= hoop.y + 20 && ball.vy > 0) {
-        const leftRim = hoop.x - hoop.rimWidth / 2;
-        const rightRim = hoop.x + hoop.rimWidth / 2;
-        
-        if (ball.x > leftRim + 8 && ball.x < rightRim - 8) {
-          // Score!
-          score++;
-          streak++;
-          if (streak > best) best = streak;
+      if (ball) {
+        ballTrail.push({ x: ball.x, y: ball.y });
+        if (ballTrail.length > 15) ballTrail.shift();
+        ball.vy += ball.gravity;
+        ball.x += ball.vx;
+        ball.y += ball.vy;
+
+        if (ball.y >= hoop.y - 10 && ball.y <= hoop.y + 20 && ball.vy > 0) {
+          var left = hoop.x - hoop.rimWidth / 2 + 8;
+          var right = hoop.x + hoop.rimWidth / 2 - 8;
+          if (ball.x > left && ball.x < right) {
+            score++; streak++;
+            if (streak > best) best = streak;
+            updateStats();
+            endShot(true);
+            return;
+          }
+        }
+        if (ball.y > 500 || ball.x < -50 || ball.x > 410) {
+          streak = 0;
           updateStats();
-          showResult(true);
-          return;
+          endShot(false);
         }
       }
-      
-      // Ball off screen
-      if (ball.y > 500 || ball.x < -50 || ball.x > 410) {
-        streak = 0;
-        updateStats();
-        showResult(false);
-      }
     }
 
-    function showResult(made) {
+    function endShot(made) {
       instructions.textContent = made ? '🎉 SWISH!' : '😢 Miss!';
-      setTimeout(() => {
+      setTimeout(function() {
         ball = null;
         ballTrail = [];
         phase = 'power';
@@ -258,59 +168,40 @@
       bestEl.textContent = best;
     }
 
-    function updateMeters() {
-      if (phase === 'power') {
-        power += powerDir * 2.5;
-        if (power >= 100 || power <= 0) powerDir *= -1;
-      } else if (phase === 'aim') {
-        aim += aimDir * 3;
-        if (aim >= 100 || aim <= -100) aimDir *= -1;
-      }
-    }
-
     function draw() {
-      // Clear
       ctx.fillStyle = '#1a1a2e';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      // Court
+      ctx.fillRect(0, 0, 360, 450);
+
       ctx.fillStyle = '#c72c41';
-      ctx.fillRect(0, 320, canvas.width, 130);
-      
-      // Court lines
+      ctx.fillRect(0, 320, 360, 130);
+
       ctx.strokeStyle = 'rgba(255,255,255,0.3)';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(180, 450, 100, Math.PI, 0);
       ctx.stroke();
-      
-      // Backboard
+
       ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      ctx.fillRect(hoop.x - 40, hoop.y - 50, 80, 60);
+      ctx.fillRect(140, 40, 80, 60);
       ctx.strokeStyle = '#ff6b35';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(hoop.x - 18, hoop.y - 30, 36, 28);
-      
-      // Rim
-      ctx.strokeStyle = '#ff6b35';
+      ctx.strokeRect(162, 60, 36, 28);
+
       ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.moveTo(hoop.x - hoop.rimWidth / 2, hoop.y);
-      ctx.lineTo(hoop.x + hoop.rimWidth / 2, hoop.y);
+      ctx.moveTo(155, 90);
+      ctx.lineTo(205, 90);
       ctx.stroke();
-      
-      // Net
+
       ctx.strokeStyle = 'rgba(255,255,255,0.5)';
       ctx.lineWidth = 1;
-      for (let i = 0; i < 6; i++) {
-        const x = hoop.x - hoop.rimWidth / 2 + 5 + i * 8;
+      for (var i = 0; i < 6; i++) {
+        var x = 157 + i * 8;
         ctx.beginPath();
-        ctx.moveTo(x, hoop.y);
-        ctx.quadraticCurveTo(x + (i % 2 ? 3 : -3), hoop.y + 25, x, hoop.y + 40);
+        ctx.moveTo(x, 90);
+        ctx.quadraticCurveTo(x + (i % 2 ? 3 : -3), 115, x, 130);
         ctx.stroke();
       }
-      
-      // Player
+
       ctx.fillStyle = hasWallet ? '#667eea' : '#555';
       ctx.beginPath();
       ctx.arc(player.x, player.y - 45, 18, 0, Math.PI * 2);
@@ -319,73 +210,52 @@
       ctx.fillRect(player.x + 8, player.y - 30, 22, 8);
       ctx.fillRect(player.x - 10, player.y + 8, 8, 22);
       ctx.fillRect(player.x + 2, player.y + 8, 8, 22);
-      
-      // Ball in hand (when not shooting)
-      if (!ball) {
-        drawBall(player.x + 28, player.y - 32, 12);
-      }
-      
-      // Ball trail
-      ballTrail.forEach((pos, i) => {
-        const alpha = i / ballTrail.length * 0.4;
-        ctx.fillStyle = `rgba(255, 107, 53, ${alpha})`;
+
+      if (!ball) drawBall(player.x + 28, player.y - 32, 12);
+
+      for (var j = 0; j < ballTrail.length; j++) {
+        ctx.fillStyle = 'rgba(255,107,53,' + (j / ballTrail.length * 0.4) + ')';
         ctx.beginPath();
-        ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2);
+        ctx.arc(ballTrail[j].x, ballTrail[j].y, 8, 0, Math.PI * 2);
         ctx.fill();
-      });
-      
-      // Flying ball
-      if (ball) {
-        drawBall(ball.x, ball.y, 12);
       }
-      
-      // Power meter
+
+      if (ball) drawBall(ball.x, ball.y, 12);
+
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
       ctx.fillRect(20, 120, 18, 160);
-      
-      const gradient = ctx.createLinearGradient(20, 280, 20, 120);
-      gradient.addColorStop(0, '#00ff00');
-      gradient.addColorStop(0.5, '#ffff00');
-      gradient.addColorStop(1, '#ff0000');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(20, 280 - (power / 100) * 160, 18, (power / 100) * 160);
-      
-      ctx.strokeStyle = 'white';
+      var grad = ctx.createLinearGradient(20, 280, 20, 120);
+      grad.addColorStop(0, '#0f0');
+      grad.addColorStop(0.5, '#ff0');
+      grad.addColorStop(1, '#f00');
+      ctx.fillStyle = grad;
+      ctx.fillRect(20, 280 - power * 1.6, 18, power * 1.6);
+      ctx.strokeStyle = '#fff';
       ctx.lineWidth = 2;
       ctx.strokeRect(20, 120, 18, 160);
-      
-      // Sweet spot
       ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.fillRect(15, 280 - (75 / 100) * 160 - 2, 28, 4);
-      
-      ctx.fillStyle = 'white';
+      ctx.fillRect(15, 160, 28, 4);
+      ctx.fillStyle = '#fff';
       ctx.font = '10px Arial';
       ctx.textAlign = 'center';
       ctx.fillText('POWER', 29, 300);
-      
-      // Aim meter
+
       if (phase === 'aim' || phase === 'shooting') {
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
         ctx.fillRect(80, 300, 200, 14);
-        
         ctx.fillStyle = 'rgba(0,255,0,0.3)';
         ctx.fillRect(165, 300, 30, 14);
-        
         ctx.fillStyle = '#ff6b35';
-        const aimX = 180 + (aim / 100) * 100;
+        var ax = 180 + aim;
         ctx.beginPath();
-        ctx.moveTo(aimX, 298);
-        ctx.lineTo(aimX - 6, 288);
-        ctx.lineTo(aimX + 6, 288);
+        ctx.moveTo(ax, 298);
+        ctx.lineTo(ax - 6, 288);
+        ctx.lineTo(ax + 6, 288);
         ctx.closePath();
         ctx.fill();
-        
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#fff';
         ctx.strokeRect(80, 300, 200, 14);
-        
-        ctx.fillStyle = 'white';
-        ctx.font = '10px Arial';
+        ctx.fillStyle = '#fff';
         ctx.fillText('AIM', 180, 328);
       }
     }
@@ -395,32 +265,26 @@
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.fill();
-      
       ctx.strokeStyle = '#cc4420';
       ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.stroke();
-      
       ctx.beginPath();
       ctx.moveTo(x, y - r);
       ctx.lineTo(x, y + r);
       ctx.stroke();
-      
       ctx.beginPath();
       ctx.moveTo(x - r, y);
       ctx.lineTo(x + r, y);
       ctx.stroke();
     }
 
-    function gameLoop() {
-      updateMeters();
-      if (phase === 'shooting') updateBall();
+    function loop() {
+      update();
       draw();
-      requestAnimationFrame(gameLoop);
+      requestAnimationFrame(loop);
     }
 
-    gameLoop();
+    loop();
   </script>
 </body>
 </html>
