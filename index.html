@@ -54,6 +54,7 @@
       justify-content: center;
       gap: 10px;
       margin-top: 8px;
+      flex-wrap: wrap;
     }
 
     .wallet-btn {
@@ -64,14 +65,45 @@
       font-family: 'Press Start 2P', cursive;
       font-size: 0.4rem;
       cursor: pointer;
+      transition: all 0.2s;
     }
 
     .wallet-btn:hover { background: #6d28d9; }
+    .wallet-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .wallet-btn.connected {
+      background: #059669;
+      border-color: #34d399;
+    }
 
     .wallet-info {
       font-size: 0.4rem;
       color: #a78bfa;
     }
+
+    .wallet-info.has-ballerz { color: #4ade80; }
+
+    .nft-selector {
+      display: none;
+      margin-top: 8px;
+      gap: 5px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .nft-selector.show { display: flex; }
+
+    .nft-thumb {
+      width: 40px;
+      height: 40px;
+      border: 2px solid #333;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #1a1a2e;
+    }
+
+    .nft-thumb:hover { border-color: #a855f7; }
+    .nft-thumb.selected { border-color: #f97316; box-shadow: 0 0 10px #f97316; }
 
     .game-container {
       position: relative;
@@ -149,6 +181,22 @@
 
     .instructions.success { color: #4ade80; }
     .instructions.miss { color: #f87171; }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid #a855f7;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 5px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
@@ -160,6 +208,7 @@
         <button class="wallet-btn" id="walletBtn">CONNECT WALLET</button>
         <span class="wallet-info" id="walletInfo">Guest Mode</span>
       </div>
+      <div class="nft-selector" id="nftSelector"></div>
     </div>
 
     <div class="game-container">
@@ -186,15 +235,240 @@
     </div>
   </div>
 
+  <!-- Flow FCL -->
+  <script src="[cdn.jsdelivr.net](https://cdn.jsdelivr.net/npm/@onflow/fcl@1.3.0/dist/fcl.min.js)"></script>
+  <script src="[cdn.jsdelivr.net](https://cdn.jsdelivr.net/npm/@onflow/types@1.0.0/dist/types.min.js)"></script>
+
   <script>
+    // ============ FLOW WALLET INTEGRATION ============
+    
+    // Configure FCL for Flow Mainnet
+    fcl.config({
+      "app.detail.title": "Ballerz Free Throw",
+      "app.detail.icon": "[ballerz.world](https://ballerz.world/logo.png)",
+      "accessNode.api": "[rest-mainnet.onflow.org](https://rest-mainnet.onflow.org)",
+      "discovery.wallet": "[fcl-discovery.onflow.org](https://fcl-discovery.onflow.org/authn)",
+      "flow.network": "mainnet"
+    });
+
+    var userWallet = null;
+    var userBallerz = [];
+    var selectedNFT = null;
+    var nftImage = null;
+
+    // Wallet button handler
+    document.getElementById('walletBtn').addEventListener('click', async function() {
+      var btn = this;
+      var info = document.getElementById('walletInfo');
+      
+      if (userWallet) {
+        // Disconnect
+        await fcl.unauthenticate();
+        userWallet = null;
+        userBallerz = [];
+        selectedNFT = null;
+        nftImage = null;
+        btn.textContent = 'CONNECT WALLET';
+        btn.classList.remove('connected');
+        info.textContent = 'Guest Mode';
+        info.classList.remove('has-ballerz');
+        document.getElementById('nftSelector').classList.remove('show');
+        document.getElementById('nftSelector').innerHTML = '';
+        useGuestBaller();
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = 'CONNECTING<span class="loading-spinner"></span>';
+
+      try {
+        await fcl.authenticate();
+        var user = await fcl.currentUser.snapshot();
+        
+        if (user.loggedIn) {
+          userWallet = user.addr;
+          btn.textContent = userWallet.slice(0, 6) + '...' + userWallet.slice(-4);
+          btn.classList.add('connected');
+          info.innerHTML = 'Loading Ballerz<span class="loading-spinner"></span>';
+          
+          // Fetch Ballerz NFTs
+          await fetchBallerz(userWallet);
+          
+          if (userBallerz.length > 0) {
+            info.textContent = userBallerz.length + ' Ballerz found!';
+            info.classList.add('has-ballerz');
+            showNFTSelector();
+            selectNFT(0);
+          } else {
+            info.textContent = 'No Ballerz found - Guest Mode';
+            useGuestBaller();
+          }
+        }
+      } catch (err) {
+        console.error('Wallet error:', err);
+        info.textContent = 'Connection failed';
+        btn.textContent = 'CONNECT WALLET';
+        useGuestBaller();
+      }
+      
+      btn.disabled = false;
+    });
+
+    // Fetch Ballerz from wallet using Gaia contract
+    async function fetchBallerz(address) {
+      userBallerz = [];
+      
+      try {
+        // Query Gaia NFTs and filter for Ballerz
+        var result = await fcl.query({
+          cadence: `
+            import Gaia from 0x8b148183c28ff88f
+            
+            pub fun main(address: Address): [{String: AnyStruct}] {
+              let account = getAccount(address)
+              let collection = account.getCapability<&{Gaia.CollectionPublic}>(Gaia.CollectionPublicPath).borrow()
+              
+              if collection == nil {
+                return []
+              }
+              
+              let nfts: [{String: AnyStruct}] = []
+              let ids = collection!.getIDs()
+              
+              for id in ids {
+                let nft = collection!.borrowGaiaNFT(id: id)!
+                let metadata = nft.metadata
+                
+                // Check if this is a Ballerz NFT
+                let setName = metadata.setName()
+                if setName == "Ballerz" {
+                  nfts.append({
+                    "id": id,
+                    "name": metadata.name(),
+                    "image": metadata.image() ?? "",
+                    "setName": setName
+                  })
+                }
+              }
+              
+              return nfts
+            }
+          `,
+          args: (arg, t) => [arg(address, t.Address)]
+        });
+        
+        userBallerz = result || [];
+        console.log('Found Ballerz:', userBallerz);
+        
+      } catch (err) {
+        console.error('Error fetching Ballerz:', err);
+        
+        // Fallback: Try alternate query method
+        try {
+          var fallbackResult = await fcl.query({
+            cadence: `
+              import NonFungibleToken from 0x1d7e57aa55817448
+              import MetadataViews from 0x1d7e57aa55817448
+              
+              pub fun main(address: Address): [{String: AnyStruct}] {
+                let account = getAccount(address)
+                let nfts: [{String: AnyStruct}] = []
+                
+                // Try to iterate known collection paths
+                let collectionPaths = [
+                  /public/GaiaCollection,
+                  /public/BallerCollection
+                ]
+                
+                for path in collectionPaths {
+                  if let collection = account.getCapability<&{NonFungibleToken.CollectionPublic, MetadataViews.ResolverCollection}>(path).borrow() {
+                    for id in collection.getIDs() {
+                      let resolver = collection.borrowViewResolver(id: id)
+                      if let display = MetadataViews.getDisplay(resolver) {
+                        nfts.append({
+                          "id": id,
+                          "name": display.name,
+                          "image": display.thumbnail.uri(),
+                          "setName": "Ballerz"
+                        })
+                      }
+                    }
+                  }
+                }
+                
+                return nfts
+              }
+            `,
+            args: (arg, t) => [arg(address, t.Address)]
+          });
+          
+          userBallerz = fallbackResult || [];
+        } catch (e2) {
+          console.error('Fallback query also failed:', e2);
+        }
+      }
+    }
+
+    // Show NFT selector thumbnails
+    function showNFTSelector() {
+      var selector = document.getElementById('nftSelector');
+      selector.innerHTML = '';
+      selector.classList.add('show');
+      
+      userBallerz.forEach(function(nft, index) {
+        var thumb = document.createElement('img');
+        thumb.className = 'nft-thumb';
+        thumb.src = nft.image || 'data:image/svg+xml,<svg xmlns="[w3.org](http://www.w3.org/2000/svg)" width="40" height="40"><rect fill="%237c3aed" width="40" height="40"/><text x="20" y="25" text-anchor="middle" fill="white" font-size="10">' + (index + 1) + '</text></svg>';
+        thumb.alt = nft.name || 'Baller #' + nft.id;
+        thumb.title = nft.name || 'Baller #' + nft.id;
+        thumb.onclick = function() { selectNFT(index); };
+        thumb.onerror = function() {
+          this.src = 'data:image/svg+xml,<svg xmlns="[w3.org](http://www.w3.org/2000/svg)" width="40" height="40"><rect fill="%237c3aed" width="40" height="40"/><text x="20" y="25" text-anchor="middle" fill="white" font-size="10">' + (index + 1) + '</text></svg>';
+        };
+        selector.appendChild(thumb);
+      });
+    }
+
+    // Select an NFT to use
+    function selectNFT(index) {
+      selectedNFT = userBallerz[index];
+      useNFTAsBaller = true;
+      
+      // Update thumbnail selection UI
+      var thumbs = document.querySelectorAll('.nft-thumb');
+      thumbs.forEach(function(t, i) {
+        t.classList.toggle('selected', i === index);
+      });
+      
+      // Load NFT image
+      if (selectedNFT && selectedNFT.image) {
+        nftImage = new Image();
+        nftImage.crossOrigin = 'anonymous';
+        nftImage.src = selectedNFT.image;
+        nftImage.onload = function() {
+          console.log('NFT image loaded:', selectedNFT.name);
+        };
+        nftImage.onerror = function() {
+          console.log('Could not load NFT image, using sprite');
+          nftImage = null;
+        };
+      }
+    }
+
+    function useGuestBaller() {
+      useNFTAsBaller = false;
+      selectedNFT = null;
+      nftImage = null;
+    }
+
+    // ============ GAME CODE ============
+
     var canvas = document.getElementById('gameCanvas');
     var ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
     
     var W = 480, H = 520;
     var shootBtn = document.getElementById('shootBtn');
-    var walletBtn = document.getElementById('walletBtn');
-    var walletInfo = document.getElementById('walletInfo');
     var instructions = document.getElementById('instructions');
     var scoreEl = document.getElementById('score');
     var streakEl = document.getElementById('streak');
@@ -211,8 +485,9 @@
     var madeShot = false;
     var netSway = 0;
     var frameCount = 0;
+    var useNFTAsBaller = false;
 
-    // Crowd members
+    // Crowd
     var crowd = [];
     for (var i = 0; i < 60; i++) {
       crowd.push({
@@ -224,79 +499,44 @@
       });
     }
 
-    // Ballerz NFT-accurate sprites
+    // Guest Ballerz sprites
     var ballerTypes = [
       {
         name: 'Purple Flash',
-        bg: '#a855f7',
-        skin: '#8B5A2B',
-        skinShade: '#6B4423',
-        hair: '#0a0a0a',
-        hairStyle: 'flat-top',
-        headband: '#fbbf24',
-        headbandShade: '#d97706',
-        jersey: '#a855f7',
-        jerseyShade: '#7c3aed',
-        jerseyTrim: '#fbbf24',
+        skin: '#8B5A2B', skinShade: '#6B4423',
+        hair: '#0a0a0a', hairStyle: 'flat-top',
+        headband: '#fbbf24', headbandShade: '#d97706',
+        jersey: '#a855f7', jerseyShade: '#7c3aed', jerseyTrim: '#fbbf24',
         number: '24',
-        shorts: '#1a1a1a',
-        shortsStripe: '#fbbf24',
-        shoes: '#1a1a1a',
-        shoeAccent: '#fbbf24',
-        earring: '#fbbf24',
-        grillz: '#fbbf24',
-        chain: null
+        shorts: '#1a1a1a', shortsStripe: '#fbbf24',
+        shoes: '#1a1a1a', shoeAccent: '#fbbf24',
+        earring: '#fbbf24', grillz: '#fbbf24', chain: null
       },
       {
         name: 'Pink Phantom',
-        bg: '#bef264',
-        skin: '#e879f9',
-        skinShade: '#c026d3',
-        hair: '#0a0a0a',
-        hairStyle: 'afro',
-        headband: '#f97316',
-        headbandShade: '#c2410c',
-        jersey: '#be185d',
-        jerseyShade: '#9d174d',
-        jerseyTrim: '#f97316',
+        skin: '#e879f9', skinShade: '#c026d3',
+        hair: '#0a0a0a', hairStyle: 'afro',
+        headband: '#f97316', headbandShade: '#c2410c',
+        jersey: '#be185d', jerseyShade: '#9d174d', jerseyTrim: '#f97316',
         number: '4',
-        shorts: '#1a1a1a',
-        shortsStripe: '#f97316',
-        shoes: '#1a1a1a',
-        shoeAccent: '#f97316',
-        earring: null,
-        grillz: null,
-        chain: '#fbbf24'
+        shorts: '#1a1a1a', shortsStripe: '#f97316',
+        shoes: '#1a1a1a', shoeAccent: '#f97316',
+        earring: null, grillz: null, chain: '#fbbf24'
       },
       {
         name: 'Wave Master',
-        bg: '#c4b5fd',
-        skin: '#deb887',
-        skinShade: '#b8956e',
-        hair: '#3d2914',
-        hairStyle: 'waves',
-        headband: null,
-        headbandShade: null,
-        jersey: '#06b6d4',
-        jerseyShade: '#a855f7',
-        jerseyTrim: '#ec4899',
+        skin: '#deb887', skinShade: '#b8956e',
+        hair: '#3d2914', hairStyle: 'waves',
+        headband: null, headbandShade: null,
+        jersey: '#06b6d4', jerseyShade: '#a855f7', jerseyTrim: '#ec4899',
         number: '23',
-        shorts: '#1a1a1a',
-        shortsStripe: '#06b6d4',
-        shoes: '#1a1a1a',
-        shoeAccent: '#ec4899',
-        earring: null,
-        grillz: null,
-        chain: null,
-        goatee: '#3d2914'
+        shorts: '#1a1a1a', shortsStripe: '#06b6d4',
+        shoes: '#1a1a1a', shoeAccent: '#ec4899',
+        earring: null, grillz: null, chain: null, goatee: '#3d2914'
       }
     ];
 
     var currentBaller = ballerTypes[Math.floor(Math.random() * ballerTypes.length)];
-
-    walletBtn.onclick = function() {
-      walletInfo.textContent = 'Coming soon!';
-    };
 
     function handleShoot() {
       if (phase === 'ready') {
@@ -313,11 +553,8 @@
         
         var powerFactor = power / 100;
         var aimFactor = aim / 100;
-        
         var targetVY = -14 - (powerFactor * 3.5);
         var targetVX = aimFactor * 3;
-        
-        // Aim assist
         var aimAssist = 0.2;
         var hoopDir = (hoop.x - player.x) * 0.006;
         targetVX = targetVX * (1 - aimAssist) + hoopDir * aimAssist;
@@ -362,7 +599,6 @@
         ball.y += ball.vy;
         ball.rotation += ball.vx * 0.1;
 
-        // Score detection
         if (ball.vy > 0 && ball.y >= hoop.y && ball.y <= hoop.y + 35) {
           var hoopLeft = hoop.x - hoop.rimWidth / 2;
           var hoopRight = hoop.x + hoop.rimWidth / 2;
@@ -374,13 +610,11 @@
             streak++;
             if (streak > best) best = streak;
             updateStats();
-            // Crowd goes wild
             crowd.forEach(function(c) { c.speed = 0.15; });
             endShot(true);
             return;
           }
           
-          // Rim collision
           if ((ball.x > hoopLeft - 4 && ball.x < hoopLeft + 8) || 
               (ball.x > hoopRight - 8 && ball.x < hoopRight + 4)) {
             if (Math.random() < 0.4) {
@@ -400,7 +634,6 @@
         }
       }
 
-      // Calm crowd
       crowd.forEach(function(c) {
         if (c.speed > 0.05) c.speed *= 0.99;
       });
@@ -421,7 +654,9 @@
         phase = 'ready';
         power = 0;
         aim = 0;
-        currentBaller = ballerTypes[Math.floor(Math.random() * ballerTypes.length)];
+        if (!useNFTAsBaller) {
+          currentBaller = ballerTypes[Math.floor(Math.random() * ballerTypes.length)];
+        }
         instructions.textContent = 'PRESS SHOOT';
         instructions.className = 'instructions';
       }, 1100);
@@ -442,37 +677,33 @@
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, W, H);
 
-      // Stadium lights glow
+      // Stadium lights
       ctx.fillStyle = 'rgba(255, 200, 100, 0.03)';
       ctx.beginPath();
       ctx.arc(W/2, -50, 300, 0, Math.PI * 2);
       ctx.fill();
 
-      // Crowd stands background
+      // Stands
       ctx.fillStyle = '#1a1a28';
       ctx.fillRect(0, 0, W, 110);
 
-      // Draw crowd
+      // Crowd
       crowd.forEach(function(c) {
         var bounce = Math.sin(frameCount * c.speed + c.phase) * 3;
         var y = c.y + bounce;
-        
-        // Head
         ctx.fillStyle = ['#deb887', '#8B5A2B', '#d4a574', '#e8beac', '#c68642'][Math.floor(c.phase * 2) % 5];
         ctx.fillRect(c.x, y, 6, 6);
-        
-        // Body
         ctx.fillStyle = c.color;
         ctx.fillRect(c.x - 1, y + 6, 8, 10);
       });
 
-      // Crowd barrier
+      // Barrier
       ctx.fillStyle = '#f97316';
       ctx.fillRect(0, 105, W, 6);
       ctx.fillStyle = '#7c2d12';
       ctx.fillRect(0, 108, W, 3);
 
-      // Court floor
+      // Court
       var courtGrad = ctx.createLinearGradient(0, 110, 0, H);
       courtGrad.addColorStop(0, '#c2803d');
       courtGrad.addColorStop(0.5, '#d4923d');
@@ -490,14 +721,12 @@
         ctx.stroke();
       }
 
-      // 3-point line arc
+      // 3-point line
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.arc(W/2, 160, 180, 0.15 * Math.PI, 0.85 * Math.PI);
       ctx.stroke();
-      
-      // 3-point line sides
       ctx.beginPath();
       ctx.moveTo(W/2 - 175, 160);
       ctx.lineTo(W/2 - 175, H);
@@ -505,11 +734,9 @@
       ctx.lineTo(W/2 + 175, H);
       ctx.stroke();
 
-      // The key (paint)
+      // Key
       ctx.fillStyle = 'rgba(185, 28, 28, 0.7)';
       ctx.fillRect(W/2 - 70, 130, 140, 180);
-
-      // Key outline
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 3;
       ctx.strokeRect(W/2 - 70, 130, 140, 180);
@@ -535,7 +762,7 @@
       ctx.arc(W/2, 160, 35, 0, Math.PI);
       ctx.stroke();
 
-      // Lane hash marks
+      // Hash marks
       ctx.lineWidth = 2;
       for (var h = 155; h < 310; h += 25) {
         ctx.beginPath();
@@ -546,7 +773,7 @@
         ctx.stroke();
       }
 
-      // Center court circle (partial)
+      // Center circle
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 3;
       ctx.beginPath();
@@ -564,13 +791,9 @@
       ctx.fillRect(W/2 - 50, 88, 100, 5);
       ctx.fillStyle = '#cccccc';
       ctx.fillRect(W/2 - 50, 88, 5, 55);
-
-      // Backboard border
       ctx.strokeStyle = '#333';
       ctx.lineWidth = 3;
       ctx.strokeRect(W/2 - 50, 88, 100, 55);
-
-      // Backboard square
       ctx.strokeStyle = '#f97316';
       ctx.lineWidth = 3;
       ctx.strokeRect(W/2 - 25, 98, 50, 35);
@@ -598,8 +821,12 @@
         ctx.fill();
       });
 
-      // Draw player
-      drawBallerSprite(player.x, player.y, currentBaller);
+      // Draw player - NFT image or sprite
+      if (useNFTAsBaller && nftImage && nftImage.complete) {
+        drawNFTPlayer(player.x, player.y);
+      } else {
+        drawBallerSprite(player.x, player.y, currentBaller);
+      }
 
       // Ball
       if (ball) {
@@ -627,19 +854,12 @@
       for (var i = 0; i < 6; i++) {
         var x = hoop.x - hoop.rimWidth/2 + 6 + i * 8;
         var swayOffset = sway * (1 - Math.abs(i - 2.5) / 3);
-        
         ctx.beginPath();
         ctx.moveTo(x, hoop.y + 3);
-        ctx.quadraticCurveTo(
-          x + swayOffset * 0.5, 
-          hoop.y + 20,
-          hoop.x + swayOffset, 
-          hoop.y + 40
-        );
+        ctx.quadraticCurveTo(x + swayOffset * 0.5, hoop.y + 20, hoop.x + swayOffset, hoop.y + 40);
         ctx.stroke();
       }
       
-      // Horizontal threads
       [15, 28].forEach(function(yOff) {
         var s = sway * (yOff / 30);
         ctx.beginPath();
@@ -649,8 +869,27 @@
       });
     }
 
+    function drawNFTPlayer(x, y) {
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(x, y + 38, 22, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Draw NFT image as player (cropped to show character)
+      var imgSize = 70;
+      ctx.save();
+      ctx.drawImage(nftImage, x - imgSize/2, y - imgSize + 15, imgSize, imgSize);
+      ctx.restore();
+
+      // Draw arm holding ball
+      ctx.fillStyle = '#deb887';
+      ctx.fillRect(x + 20, y - 35, 8, 6);
+      ctx.fillRect(x + 25, y - 42, 8, 10);
+    }
+
     function drawBallerSprite(x, y, b) {
-      var p = 3; // pixel size for sprite
+      var p = 3;
       
       // Shadow
       ctx.fillStyle = 'rgba(0,0,0,0.25)';
@@ -670,7 +909,6 @@
       ctx.fillStyle = b.skin;
       ctx.fillRect(x - 10, y + 10, p * 2, p * 7);
       ctx.fillRect(x + 4, y + 10, p * 2, p * 7);
-      // Leg shading
       ctx.fillStyle = b.skinShade;
       ctx.fillRect(x - 10, y + 10, p, p * 7);
       ctx.fillRect(x + 4, y + 10, p, p * 7);
@@ -678,70 +916,62 @@
       // Shorts
       ctx.fillStyle = b.shorts;
       ctx.fillRect(x - 12, y - 2, p * 8, p * 5);
-      // Shorts stripe
       ctx.fillStyle = b.shortsStripe;
       ctx.fillRect(x - 12, y + 1, p * 8, p);
 
-      // Jersey body
+      // Jersey
       ctx.fillStyle = b.jersey;
       ctx.fillRect(x - 13, y - 22, p * 9, p * 7);
-      // Jersey shading
       ctx.fillStyle = b.jerseyShade;
       ctx.fillRect(x - 13, y - 22, p * 3, p * 7);
-      // Jersey trim
       ctx.fillStyle = b.jerseyTrim;
       ctx.fillRect(x - 13, y - 22, p, p * 7);
       ctx.fillRect(x + 11, y - 22, p, p * 7);
       ctx.fillRect(x - 13, y - 22, p * 9, p);
 
-      // Jersey number
+      // Number
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 10px "Press Start 2P"';
       ctx.textAlign = 'center';
       ctx.fillText(b.number, x, y - 8);
 
-      // Left arm (down)
+      // Left arm
       ctx.fillStyle = b.skin;
       ctx.fillRect(x - 18, y - 18, p * 2, p * 5);
       ctx.fillStyle = b.skinShade;
       ctx.fillRect(x - 18, y - 18, p, p * 5);
 
-      // Right arm (shooting pose - raised)
+      // Right arm (shooting)
       ctx.fillStyle = b.skin;
       ctx.fillRect(x + 13, y - 25, p * 2, p * 3);
       ctx.fillRect(x + 16, y - 32, p * 2, p * 3);
-      // Hand
       ctx.fillRect(x + 18, y - 38, p * 2, p * 2);
 
       // Neck
       ctx.fillStyle = b.skin;
       ctx.fillRect(x - 3, y - 26, p * 2, p * 2);
 
-      // Head base
+      // Head
       ctx.fillStyle = b.skin;
       ctx.fillRect(x - 10, y - 45, p * 7, p * 7);
-      // Face shading
       ctx.fillStyle = b.skinShade;
       ctx.fillRect(x - 10, y - 45, p * 2, p * 7);
 
-      // Hair based on style
+      // Hair
       ctx.fillStyle = b.hair;
       if (b.hairStyle === 'flat-top') {
         ctx.fillRect(x - 12, y - 55, p * 8, p * 4);
         ctx.fillRect(x - 10, y - 51, p * 7, p * 2);
-        // Side hair
         ctx.fillRect(x - 12, y - 45, p, p * 4);
         ctx.fillRect(x + 10, y - 45, p, p * 4);
       } else if (b.hairStyle === 'afro') {
         ctx.fillRect(x - 15, y - 60, p * 10, p * 6);
         ctx.fillRect(x - 12, y - 54, p * 8, p * 3);
-        // Sides
         ctx.fillRect(x - 15, y - 48, p * 2, p * 5);
         ctx.fillRect(x + 10, y - 48, p * 2, p * 5);
       } else if (b.hairStyle === 'waves') {
         ctx.fillRect(x - 10, y - 50, p * 7, p * 3);
         ctx.fillRect(x - 7, y - 53, p * 5, p * 2);
-        // Wave texture
         ctx.fillStyle = b.skinShade;
         ctx.fillRect(x - 5, y - 50, p, p);
         ctx.fillRect(x + 2, y - 50, p, p);
@@ -759,7 +989,6 @@
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(x - 7, y - 40, p, p * 2);
       ctx.fillRect(x + 4, y - 40, p, p * 2);
-      // Pupils
       ctx.fillStyle = '#0a0a0a';
       ctx.fillRect(x - 6, y - 39, p, p);
       ctx.fillRect(x + 5, y - 39, p, p);
@@ -773,7 +1002,7 @@
       ctx.fillStyle = b.skinShade;
       ctx.fillRect(x - 1, y - 37, p, p * 2);
 
-      // Mouth
+      // Mouth / accessories
       if (b.grillz) {
         ctx.fillStyle = b.grillz;
         ctx.fillRect(x - 4, y - 32, p * 3, p);
@@ -782,19 +1011,16 @@
         ctx.fillRect(x - 3, y - 32, p * 2, p);
       }
 
-      // Goatee
       if (b.goatee) {
         ctx.fillStyle = b.goatee;
         ctx.fillRect(x - 3, y - 30, p * 2, p * 2);
       }
 
-      // Earring
       if (b.earring) {
         ctx.fillStyle = b.earring;
         ctx.fillRect(x - 13, y - 38, p, p);
       }
 
-      // Chain
       if (b.chain) {
         ctx.fillStyle = b.chain;
         ctx.fillRect(x - 6, y - 24, p * 4, p);
@@ -807,19 +1033,16 @@
       ctx.translate(x, y);
       ctx.rotate(rotation);
 
-      // Ball
       ctx.fillStyle = '#f97316';
       ctx.beginPath();
       ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.fill();
 
-      // Highlight
       ctx.fillStyle = '#fb923c';
       ctx.beginPath();
       ctx.arc(-r/3, -r/3, r/2.5, 0, Math.PI * 2);
       ctx.fill();
 
-      // Lines
       ctx.strokeStyle = '#7c2d12';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
@@ -840,15 +1063,11 @@
     }
 
     function drawMeter(x, y, w, h, value, label, isLeft) {
-      // Background
       ctx.fillStyle = '#0a0a0a';
       ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
-
-      // Track
       ctx.fillStyle = '#222';
       ctx.fillRect(x, y, w, h);
 
-      // Fill
       var fillH = (value / 100) * h;
       var grad = ctx.createLinearGradient(x, y + h, x, y);
       grad.addColorStop(0, '#22c55e');
@@ -858,18 +1077,15 @@
       ctx.fillStyle = grad;
       ctx.fillRect(x, y + h - fillH, w, fillH);
 
-      // Sweet zone
       ctx.fillStyle = 'rgba(34, 197, 94, 0.25)';
       var zoneTop = y + h - (85/100) * h;
       var zoneH = (35/100) * h;
       ctx.fillRect(x, zoneTop, w, zoneH);
 
-      // Border
       ctx.strokeStyle = '#f97316';
       ctx.lineWidth = 2;
       ctx.strokeRect(x - 2, y - 2, w + 4, h + 4);
 
-      // Indicator
       var indY = y + h - fillH;
       ctx.fillStyle = '#fff';
       if (isLeft) {
@@ -888,7 +1104,6 @@
         ctx.fill();
       }
 
-      // Label
       ctx.fillStyle = '#fbbf24';
       ctx.font = '7px "Press Start 2P"';
       ctx.textAlign = 'center';
